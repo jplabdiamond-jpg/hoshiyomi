@@ -45,8 +45,8 @@ export async function onRequestPost(context) {
         max_tokens: 1536,
         temperature: 0.85,
         top_p: 0.95,
-        frequency_penalty: 0.6, // 同じ語の繰り返しを抑制
-        presence_penalty: 0.4,  // 話題の広がりを促す
+        frequency_penalty: 0.5, // 同じ語の繰り返しを抑制
+        presence_penalty: 0.3,  // 話題の広がりを促す
       });
       reading = (resp && (resp.response || resp.result || '')).trim();
     } catch (e) {
