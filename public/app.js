@@ -193,19 +193,44 @@
         `<span class="bchip${(b[e] || 0) === 0 ? ' zero' : ''}">${e}${b[e] || 0}</span>`
       ).join('');
       const str = d.dayMasterStrength ? d.dayMasterStrength.label : '';
+      // 大運タイムライン
+      let dayun = '';
+      if (d.daYun) {
+        const items = d.daYun.pillars.map((p) =>
+          `<div class="tl-item${p.note ? ' turn' : ''}"><span class="tl-age">${p.ageStart}〜${p.ageEnd}歳</span><span class="tl-k">${esc(p.kanshi)}</span><span class="tl-g">${esc(p.tenGod)}</span>${p.note ? `<span class="tl-note">${esc(p.note)}</span>` : ''}</div>`
+        ).join('');
+        dayun = `<h4>大運（10年ごとの運気）</h4><div class="timeline">${items}</div>`;
+      }
+      // 流年（注目年のみ強調）
+      let liunian = '';
+      if (d.liuNian) {
+        const items = d.liuNian.map((y) =>
+          `<div class="tl-item${y.note ? ' turn' : ''}"><span class="tl-age">${y.year}年</span><span class="tl-g">${esc(y.tenGod)}</span>${y.note ? `<span class="tl-note">${esc(y.note)}</span>` : ''}</div>`
+        ).join('');
+        liunian = `<h4>流年（今後の各年）</h4><div class="timeline">${items}</div>`;
+      }
       return `<div class="rbody" style="border-bottom:1px solid var(--line)">
         <h4 style="margin-top:0">命式</h4><div class="pillars">${pillars}</div>
         <div class="balance">五行バランス ${bal}</div>
         <div style="margin-top:6px;font-size:12.5px;color:var(--muted)">日主（あなたの核）：<b style="color:var(--gold)">${esc(d.dayMaster.stem)}（${esc(d.dayMaster.element)}）</b>　${esc(str)}</div>
+        ${dayun}${liunian}
       </div>`;
     }
     if (data.divination === 'astrology') {
       const main = d.planets.slice(0, 3).map((p) => cell(p.ja, p.position)).join('');
       const ang = (d.ascendant ? cell('アセンダント', d.ascendant.label) : '') + (d.mc ? cell('MC', d.mc.label) : '');
       const rest = d.planets.slice(3).map((p) => cell(p.ja, p.position + (p.retrograde ? ' ℞' : ''))).join('');
+      let transits = '';
+      if (d.transits && d.transits.length) {
+        const items = d.transits.map((h) =>
+          `<div class="tl-item turn"><span class="tl-age">${esc(h.ym)}</span><span class="tl-g">${esc(h.transit)}→${esc(h.natal)} ${esc(h.aspect)}</span><span class="tl-note">${esc(h.theme)}</span></div>`
+        ).join('');
+        transits = `<h4>この先の転機（トランジット）</h4><div class="timeline">${items}</div>`;
+      }
       return `<div class="rbody" style="border-bottom:1px solid var(--line)">
         <h4 style="margin-top:0">ホロスコープ</h4><div class="data-grid">${main}${ang}${rest}</div>
         ${d.notice ? `<div style="font-size:12px;color:var(--muted);margin-top:6px">${esc(d.notice)}</div>` : ''}
+        ${transits}
       </div>`;
     }
     if (data.divination === 'tarot') {

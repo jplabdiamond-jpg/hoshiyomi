@@ -73,6 +73,78 @@ function sunLongitude(date) {
   return norm360(Math.atan2(ec.y, ec.x) * DEG);
 }
 
+// 地支どうしの冲（6つ離れた対沖）判定
+function isClash(b1, b2) {
+  return (b1 + 6) % 12 === b2;
+}
+
+// 大運（10年ごとの運気の柱）を算出
+function computeDaYun(o, birthDate, lambda, yStem, mStem, mBranch, dStem, dBranch) {
+  const birthTime = new Astronomy.AstroTime(birthDate);
+  const yearYang = yStem % 2 === 0; // 甲丙戊庚壬=陽
+  const male = o.gender === 'male';
+  const forward = (yearYang && male) || (!yearYang && !male); // 陽年男/陰年女=順行
+
+  // 起運：順行は次の節まで、逆行は前の節からの日数 ÷ 3 = 歳
+  const k = Math.floor(norm360(lambda - 315) / 30);
+  let days;
+  if (forward) {
+    const Lnext = norm360(315 + 30 * (k + 1));
+    const t = Astronomy.SearchSunLongitude(Lnext, birthTime, 40);
+    days = t ? t.ut - birthTime.ut : 0;
+  } else {
+    const Lprev = norm360(315 + 30 * k);
+    const start = new Astronomy.AstroTime(new Date(birthDate.getTime() - 45 * 86400000));
+    const t = Astronomy.SearchSunLongitude(Lprev, start, 46);
+    days = t ? birthTime.ut - t.ut : 0;
+  }
+  const startAge = Math.max(0, days / 3);
+  const dir = forward ? 1 : -1;
+
+  const pillars = [];
+  for (let i = 1; i <= 8; i++) {
+    const stem = ((mStem + dir * i) % 10 + 10) % 10;
+    const branch = ((mBranch + dir * i) % 12 + 12) % 12;
+    const god = tenGod(dStem, stem);
+    pillars.push({
+      kanshi: STEMS[stem] + BRANCHES[branch],
+      ageStart: Math.round((startAge + (i - 1) * 10) * 10) / 10,
+      ageEnd: Math.round((startAge + i * 10) * 10) / 10,
+      tenGod: god,
+      clashDay: isClash(branch, dBranch),
+      note: ['偏官', '正官'].includes(god) ? '転機・責任が増す時期' : isClash(branch, dBranch) ? '変化・揺らぎの時期' : '',
+    });
+  }
+  return { forward, startAge: Math.round(startAge * 10) / 10, pillars };
+}
+
+// 流年（毎年の運気）を算出
+function computeLiuNian(o, dStem, dBranch, yBranch, nowYear) {
+  const out = [];
+  for (let y = nowYear; y < nowYear + 9; y++) {
+    const ys = ((y - 4) % 10 + 10) % 10;
+    const yb = ((y - 4) % 12 + 12) % 12;
+    const god = tenGod(dStem, ys);
+    const clashDay = isClash(yb, dBranch);
+    const clashYear = isClash(yb, yBranch); // 歳破（本命の年支との冲）
+    let note = '';
+    if (clashDay) note = '生活や環境が動きやすい年';
+    else if (clashYear) note = '節目・仕切り直しの年';
+    else if (['偏官', '正官'].includes(god)) note = 'プレッシャーと成長の年';
+    else if (['偏財', '正財'].includes(god)) note = '成果・現実化のチャンスの年';
+    else if (['食神', '傷官'].includes(god)) note = '表現・発信が活きる年';
+    out.push({
+      year: y,
+      age: y - o.year,
+      kanshi: STEMS[ys] + BRANCHES[yb],
+      tenGod: god,
+      clash: clashDay || clashYear,
+      note,
+    });
+  }
+  return out;
+}
+
 // グレゴリオ暦 → ユリウス通日（整数, その暦日の正午を指す）
 function gregorianToJDN(y, m, d) {
   const a = Math.floor((14 - m) / 12);
@@ -211,6 +283,16 @@ export function computeFourPillars(o) {
     note: '※簡易判定。厳密な身強身弱は蔵干・通根も要考慮',
   };
 
+  // 大運・流年（今後の運気の時期）
+  const nowYear = o.nowYear || new Date().getFullYear();
+  if (o.gender === 'male' || o.gender === 'female') {
+    result.daYun = computeDaYun(o, new Date(utcMs), lambda, yStem, mStem, mBranch, dStem, dBranch);
+  } else {
+    result.daYunNotice = '性別が未指定のため、大運（10年ごとの運気）は省略しています。';
+  }
+  result.liuNian = computeLiuNian(o, dStem, dBranch, yBranch, nowYear);
+  result.nowYear = nowYear;
+
   return result;
 }
 
@@ -223,6 +305,23 @@ export function summarizeFourPillars(fp) {
   const b = fp.elementBalance;
   lines.push(`五行バランス: 木${b.木}・火${b.火}・土${b.土}・金${b.金}・水${b.水}（最多:${fp.elementStrongest}${fp.elementMissing.length ? ` / 不足:${fp.elementMissing.join('')}` : ''}）`);
   lines.push(`日主の強弱: ${fp.dayMasterStrength.label}（支える五行の数 ${fp.dayMasterStrength.supportCount}/${fp.dayMasterStrength.total}、月令の支え:${fp.dayMasterStrength.monthSupports ? 'あり' : 'なし'}）`);
+
+  if (fp.daYun) {
+    lines.push(`\n【大運＝10年ごとの運気の流れ（${fp.daYun.forward ? '順行' : '逆行'}・${fp.daYun.startAge}歳から切替）】`);
+    for (const p of fp.daYun.pillars) {
+      lines.push(`・${p.ageStart}〜${p.ageEnd}歳: ${p.kanshi}（${p.tenGod}）${p.note ? ' ← ' + p.note : ''}`);
+    }
+  } else if (fp.daYunNotice) {
+    lines.push(fp.daYunNotice);
+  }
+
+  if (fp.liuNian) {
+    lines.push(`\n【流年＝今後の各年の運気（${fp.nowYear}年〜）】`);
+    for (const y of fp.liuNian) {
+      lines.push(`・${y.year}年（${y.age}歳）: ${y.kanshi}（${y.tenGod}）${y.note ? ' ← ' + y.note : ''}`);
+    }
+  }
+
   if (fp.notice) lines.push(`注意: ${fp.notice}`);
   return lines.join('\n');
 }

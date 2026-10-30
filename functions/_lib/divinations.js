@@ -29,7 +29,7 @@ export const DIVINATIONS = [
     key: 'fourpillars',
     ja: '四柱推命',
     icon: '🀄',
-    tagline: '生年月日時の干支（命式）から宿命と運気を読む',
+    tagline: '生年月日時の干支（命式）と大運・流年から宿命と運気の時期を読む',
     fields: [
       { key: 'birthDate', label: '生年月日', type: 'date', required: true, help: '例）1990/5/15' },
       {
@@ -38,6 +38,17 @@ export const DIVINATIONS = [
         type: 'time',
         required: false,
         help: '例）10:30（不明なら時柱を省略します）',
+      },
+      {
+        key: 'gender',
+        label: '性別',
+        type: 'select',
+        required: true,
+        help: '大運（10年ごとの運気の流れ）の算出に使います',
+        options: [
+          { value: 'male', label: '男性' },
+          { value: 'female', label: '女性' },
+        ],
       },
     ],
   },

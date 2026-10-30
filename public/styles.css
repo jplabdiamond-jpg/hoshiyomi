@@ -95,6 +95,13 @@ h1 small{font-family:var(--sans);font-weight:400;font-size:11px;letter-spacing:.
 .balance{margin-top:10px;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .balance .bchip{display:inline-block;padding:3px 9px;border-radius:999px;background:rgba(138,125,255,.12);border:1px solid var(--line);color:var(--ink);font-size:12px}
 .balance .bchip.zero{opacity:.4}
+.timeline{display:flex;flex-direction:column;gap:5px;margin:4px 0 2px}
+.tl-item{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;padding:7px 10px;border-radius:9px;background:rgba(12,14,30,.5);border:1px solid var(--line)}
+.tl-item.turn{border-color:rgba(231,201,139,.4);background:rgba(231,201,139,.07)}
+.tl-age{color:var(--gold-soft);font-weight:600;min-width:72px}
+.tl-k{font-family:var(--serif);color:var(--gold);font-size:15px}
+.tl-g{color:var(--violet)}
+.tl-note{color:var(--muted);font-size:12px}
 .cards{display:flex;flex-wrap:wrap;gap:10px}
 .tcard{flex:1 1 140px;background:rgba(12,14,30,.55);border:1px solid var(--line);border-radius:12px;padding:12px;min-width:130px}
 .tcard .pos{font-size:11px;color:var(--gold-soft);letter-spacing:.05em}

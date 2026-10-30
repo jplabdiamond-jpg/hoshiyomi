@@ -1,5 +1,5 @@
 // 鑑定文生成のためのプロンプト構築と計算オーケストレーション
-import { computeNatalChart, summarizeChart } from './astrology.js';
+import { computeNatalChart, summarizeChart, forecastTransits, summarizeTransits } from './astrology.js';
 import { computeFourPillars, summarizeFourPillars } from './fourpillars.js';
 import { drawTarot, summarizeTarot } from './tarot.js';
 import { getDivination, resolveCity, parseDate, parseTime } from './divinations.js';
@@ -23,10 +23,12 @@ export function computeDivination(key, answers) {
       lat: city?.lat, lon: city?.lon,
       timeKnown: t.known && !!city,
     });
+    const transits = forecastTransits(chart, new Date(), 36);
+    chart.transits = transits;
     return {
       title: '西洋占星術',
       data: chart,
-      material: summarizeChart(chart),
+      material: summarizeChart(chart) + '\n\n' + summarizeTransits(transits),
       meta: { timeKnown: t.known, place: city?.matched || null },
     };
   }
@@ -40,6 +42,7 @@ export function computeDivination(key, answers) {
       hour: t.hour, minute: t.minute,
       tzOffsetMinutes: JP_TZ,
       timeKnown: t.known,
+      gender: answers.gender,
     });
     return {
       title: '四柱推命',
@@ -79,20 +82,20 @@ export function buildMessages(key, computed, answers) {
   let instruction = '';
   if (key === 'astrology') {
     instruction =
-      '西洋占星術の鑑定文を作ってください。次の見出しで構成します。\n' +
+      '西洋占星術の鑑定文を作ってください。「占いと予知の中間」として、今後の見通しを重視します。次の見出しで構成します。\n' +
       '■ あなたという人（太陽・月・アセンダントが分かればその3点を、普段の自分・心の内側・第一印象として噛み砕く）\n' +
       '■ 強みと、少し気をつけたいところ（エレメント/クオリティの偏りも日常語で）\n' +
-      '■ 今の運気の流れ\n' +
-      '■ これからどうすると良いか（最重要・厚めに）… 今日から試せる具体的な行動を3つ、場面つきで提案する\n' +
-      '全体で800〜1000字程度。専門用語には必ず一言の説明を添えること。';
+      '■ この先の見通しと転機【最重要・最も厚く】… 鑑定データのトランジット（時期つき）を必ず使い、「何年何月ごろ、どんなテーマの転機・山場・追い風が来そうか」を時系列で具体的に語る。土星=踏ん張りどき、木星=追い風、天王星=変化、のように噛み砕く。困難が予想される時期は、身構えさせるのではなく備え方とともに伝える\n' +
+      '■ その時期をどう活かすか… 近い転機に向けて今日から始められる具体的な準備・行動を3つ、場面つきで\n' +
+      '全体で1000〜1200字程度。専門用語には必ず一言の説明を添えること。トランジットのデータにない時期・出来事を創作しないこと。';
   } else if (key === 'fourpillars') {
     instruction =
-      '四柱推命の鑑定文を作ってください。日主（あなたの核となる性質）を中心に、五行バランス・十神・身強身弱を手がかりにします。次の見出しで構成します。\n' +
+      '四柱推命の鑑定文を作ってください。「占いと予知の中間」として、大運・流年による今後の時期予測を重視します。日主（あなたの核）・五行バランス・十神・身強身弱・大運・流年を手がかりにします。次の見出しで構成します。\n' +
       '■ あなたの核（日主を、どんな人柄かへ噛み砕いて）\n' +
-      '■ 持ち味と活かし方（十神や、多い五行・足りない五行を、才能や注意点として日常語で。五行名を連呼しない）\n' +
-      '■ 運気の傾向\n' +
-      '■ これからどうすると良いか（最重要・厚めに）… 足りない五行の補い方や、強みの伸ばし方を、仕事・人間関係・習慣の具体的な行動として3つ提案する\n' +
-      '全体で800〜1000字程度。「身強／身弱」などの用語はその場で意味を説明すること。';
+      '■ 持ち味と活かし方（十神や、多い五行・足りない五行を才能や注意点として日常語で。五行名を連呼しない）\n' +
+      '■ これからの運気の流れと転機【最重要・最も厚く】… 大運（10年ごとの流れ）と流年（各年）のデータを必ず使い、「今はどの大運にいて、何歳ごろ・西暦何年ごろにどんな転機や山場、しんどい時期や飛躍の時期が来そうか」を時系列で具体的に語る。官殺の時期＝責任や重圧が増す転機、冲の年＝環境が動く節目、財の年＝成果化のチャンス、のように噛み砕く。困難が予想される時期は備え方とともに伝える\n' +
+      '■ その時期をどう活かすか… 近づく転機に向けて、足りない五行の補い方や強みの伸ばし方を、今日から始められる具体的な行動3つとして場面つきで\n' +
+      '全体で1000〜1200字程度。「身強／身弱」「大運」「流年」などの用語はその場で意味を説明すること。データにない年や出来事を創作しないこと。';
   } else if (key === 'tarot') {
     instruction =
       'タロットの鑑定文を作ってください。次の見出しで構成します。\n' +

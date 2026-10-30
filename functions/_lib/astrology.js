@@ -220,6 +220,87 @@ function balanceOf(planets) {
   return { el, ql };
 }
 
+// トランジット（運行）：今後の天体運行がネイタルの重要点に作る主要アスペクトの時期
+const TRANSIT_BODIES = [
+  { body: Astronomy.Body.Jupiter, ja: '木星', theme: '拡大・チャンス・成長' },
+  { body: Astronomy.Body.Saturn, ja: '土星', theme: '試練・責任・転機（基盤づくり）' },
+  { body: Astronomy.Body.Uranus, ja: '天王星', theme: '突然の変化・解放' },
+  { body: Astronomy.Body.Neptune, ja: '海王星', theme: '理想・曖昧さ・手放し' },
+  { body: Astronomy.Body.Pluto, ja: '冥王星', theme: '根本的な変容' },
+];
+const TRANSIT_ASPECTS = [
+  { ja: '合', angle: 0 }, { ja: 'オポジション', angle: 180 },
+  { ja: 'スクエア', angle: 90 }, { ja: 'トライン', angle: 120 }, { ja: 'セクスタイル', angle: 60 },
+];
+
+function sep(a, b) {
+  let d = Math.abs(norm360(a) - norm360(b));
+  return d > 180 ? 360 - d : d;
+}
+
+export function forecastTransits(chart, nowDate, months = 30) {
+  const points = [
+    { name: '太陽', lon: chart.planets[0].longitude },
+    { name: '月', lon: chart.planets[1].longitude },
+  ];
+  if (chart.ascendant) points.push({ name: 'アセンダント', lon: chart.ascendant.longitude });
+  if (chart.mc) points.push({ name: 'MC', lon: chart.mc.longitude });
+
+  const stepDays = 12;
+  const steps = Math.ceil((months * 30.4) / stepDays);
+  const times = [];
+  for (let i = 0; i <= steps; i++) {
+    const dt = new Date(nowDate.getTime() + i * stepDays * 86400000);
+    times.push({ date: dt, time: new Astronomy.AstroTime(dt) });
+  }
+
+  const hits = [];
+  for (const tb of TRANSIT_BODIES) {
+    // 各時点の黄経を先に計算
+    const lons = times.map((t) => eclipticLongitude(tb.body, t.time));
+    for (const pt of points) {
+      for (const asp of TRANSIT_ASPECTS) {
+        let prev = sep(lons[0], pt.lon) - asp.angle;
+        for (let i = 1; i < times.length; i++) {
+          const cur = sep(lons[i], pt.lon) - asp.angle;
+          if ((prev <= 0 && cur > 0) || (prev >= 0 && cur < 0)) {
+            // 符号反転＝アスペクト正確化。線形補間で時期を推定
+            const frac = Math.abs(prev) / (Math.abs(prev) + Math.abs(cur));
+            const dt = new Date(times[i - 1].date.getTime() + frac * stepDays * 86400000);
+            hits.push({
+              date: dt,
+              ym: `${dt.getFullYear()}年${dt.getMonth() + 1}月`,
+              transit: tb.ja,
+              theme: tb.theme,
+              natal: pt.name,
+              aspect: asp.ja,
+            });
+          }
+          prev = cur;
+        }
+      }
+    }
+  }
+  hits.sort((a, b) => a.date - b.date);
+  // 逆行による同一アスペクトの重複（数ヶ月以内）は最初の1件にまとめる
+  const deduped = [];
+  for (const h of hits) {
+    const key = `${h.transit}|${h.natal}|${h.aspect}`;
+    const dup = deduped.find((x) => `${x.transit}|${x.natal}|${x.aspect}` === key && Math.abs(x.date - h.date) < 150 * 86400000);
+    if (!dup) deduped.push(h);
+  }
+  return deduped.slice(0, 10);
+}
+
+export function summarizeTransits(hits) {
+  if (!hits || !hits.length) return '';
+  const lines = ['【トランジット＝今後の運気の転機（時期つき）】'];
+  for (const h of hits) {
+    lines.push(`・${h.ym}ごろ: 運行する${h.transit}が${h.natal}に${h.aspect} … ${h.theme}`);
+  }
+  return lines.join('\n');
+}
+
 // 要約（鑑定文生成プロンプト用の素材）
 export function summarizeChart(chart) {
   const lines = [];
