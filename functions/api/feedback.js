@@ -1,6 +1,8 @@
 // POST /api/feedback
 // body: { reading_id, anon_id, accurate(bool), rating?, comment? }
 // 鑑定の「当たり/外れ」フィードバックを D1 に保存する。
+import { ensureSchema } from '../_lib/db.js';
+
 const json = (obj, status = 200) =>
   new Response(JSON.stringify(obj), {
     status, headers: { 'content-type': 'application/json; charset=utf-8' },
@@ -16,6 +18,7 @@ export async function onRequestPost(context) {
   if (!reading_id) return json({ error: 'reading_id は必須です' }, 400);
 
   try {
+    await ensureSchema(env.DB);
     const id = crypto.randomUUID();
     await env.DB.prepare(
       'INSERT INTO feedback (id, reading_id, anon_id, accurate, rating, comment) VALUES (?, ?, ?, ?, ?, ?)'

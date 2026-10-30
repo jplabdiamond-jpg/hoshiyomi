@@ -2,6 +2,7 @@
 // body: { divination: 'astrology'|'fourpillars'|'tarot', answers: {...} }
 // → 確定計算 + Cloudflare Workers AI による鑑定文を返す
 import { computeDivination, buildMessages, DISCLAIMER } from '../_lib/reading.js';
+import { ensureSchema } from '../_lib/db.js';
 
 const DEFAULT_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
 
@@ -68,6 +69,7 @@ export async function onRequestPost(context) {
   let readingId = null;
   if (env.DB) {
     try {
+      await ensureSchema(env.DB);
       readingId = crypto.randomUUID();
       await env.DB.prepare(
         'INSERT INTO readings (id, anon_id, divination, input_json, summary, model) VALUES (?, ?, ?, ?, ?, ?)'
