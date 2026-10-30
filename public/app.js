@@ -91,6 +91,7 @@
     state.div = d; state.fields = d.fields; state.idx = 0; state.answers = {}; state.stage = 'collecting';
     bubble('user', esc(d.ja));
     await botSay(`承知しました。<b>${esc(d.ja)}</b>で占います。<br>いくつか教えてくださいね。`, 500);
+    if (d.privacyNote) await botSay(`<span style="font-size:13px;color:var(--muted)">🔒 ${esc(d.privacyNote)}</span>`, 400);
     askNext();
   }
 
@@ -233,6 +234,32 @@
         ${transits}
       </div>`;
     }
+    if (data.divination === 'seimei') return renderSeimei(d);
+
+    if (data.divination === 'numerology') {
+      return `<div class="rbody" style="border-bottom:1px solid var(--line)">
+        <div class="data-grid">${cell('ライフパス', d.lifePath.number + '・' + d.lifePath.title)}${cell('誕生数', d.birthDay.number + '・' + d.birthDay.title)}</div></div>`;
+    }
+
+    if (data.divination === 'comprehensive') {
+      const a = d.astrology, fp = d.fourpillars, num = d.numerology;
+      const head = [
+        cell('太陽星座', a.planets[0].sign),
+        cell('日主', fp.dayMaster.stem + '（' + fp.dayMaster.element + '）'),
+        cell('ライフパス', num.lifePath.number + '・' + num.lifePath.title),
+      ];
+      if (d.seimei && !d.seimei.error) head.push(cell('姓名・総格', d.seimei.kaku.総格.stroke + '画 ' + d.seimei.kaku.総格.luck));
+      // 時期予測タイムライン（大運の転機＋トランジット上位）
+      let tl = '';
+      const turns = (fp.daYun ? fp.daYun.pillars.filter((p) => p.note) : [])
+        .map((p) => `<div class="tl-item turn"><span class="tl-age">${p.ageStart}〜${p.ageEnd}歳</span><span class="tl-k">${esc(p.kanshi)}</span><span class="tl-note">${esc(p.note)}</span></div>`);
+      const tr = (a.transits || []).slice(0, 5)
+        .map((h) => `<div class="tl-item turn"><span class="tl-age">${esc(h.ym)}</span><span class="tl-g">${esc(h.transit)}→${esc(h.natal)}</span><span class="tl-note">${esc(h.theme)}</span></div>`);
+      if (turns.length || tr.length) tl = `<h4>注目の時期（四柱推命×占星術）</h4><div class="timeline">${turns.join('')}${tr.join('')}</div>`;
+      return `<div class="rbody" style="border-bottom:1px solid var(--line)">
+        <h4 style="margin-top:0">総合プロフィール</h4><div class="data-grid">${head.join('')}</div>${tl}</div>`;
+    }
+
     if (data.divination === 'tarot') {
       const cards = d.cards.map((c) =>
         `<div class="tcard"><div class="pos">${esc(c.position)}</div><div class="nm">${esc(c.name)}</div>
@@ -242,6 +269,16 @@
         <h4 style="margin-top:0">${esc(d.spread)}</h4><div class="cards">${cards}</div></div>`;
     }
     return '';
+  }
+
+  function renderSeimei(d) {
+    if (d.error) return `<div class="rbody" style="border-bottom:1px solid var(--line)"><div style="color:var(--muted);font-size:13px">${esc(d.error)}</div></div>`;
+    const cells = Object.entries(d.kaku).map(([k, v]) =>
+      `<div class="data-cell"><b>${esc(k)}（${esc(v.luck)}）</b>${v.stroke}画 ${esc(v.meaning)}</div>`
+    ).join('');
+    return `<div class="rbody" style="border-bottom:1px solid var(--line)">
+      <h4 style="margin-top:0">五格（${esc(d.sei)} ${esc(d.mei)}）</h4><div class="data-grid">${cells}</div>
+      <div style="margin-top:8px;font-size:12.5px;color:var(--muted)">三才配置：天${esc(d.sancai.天)}・人${esc(d.sancai.人)}・地${esc(d.sancai.地)}（${esc(d.sancai.harmony)}）</div></div>`;
   }
 
   function offerRestart() {

@@ -2,6 +2,8 @@
 import { computeNatalChart, summarizeChart, forecastTransits, summarizeTransits } from './astrology.js';
 import { computeFourPillars, summarizeFourPillars } from './fourpillars.js';
 import { drawTarot, summarizeTarot } from './tarot.js';
+import { computeSeimei, summarizeSeimei } from './seimei.js';
+import { computeNumerology, summarizeNumerology } from './numerology.js';
 import { getDivination, resolveCity, parseDate, parseTime } from './divinations.js';
 
 const JP_TZ = 540; // 日本標準時（分）
@@ -62,6 +64,61 @@ export function computeDivination(key, answers) {
     };
   }
 
+  if (key === 'seimei') {
+    const res = computeSeimei(answers.sei, answers.mei);
+    return { title: '姓名判断', data: res, material: summarizeSeimei(res), meta: {} };
+  }
+
+  if (key === 'numerology') {
+    const d = parseDate(answers.birthDate);
+    if (!d) throw new Error('生年月日を読み取れませんでした');
+    const res = computeNumerology(d.year, d.month, d.day);
+    return { title: '数秘術', data: res, material: summarizeNumerology(res), meta: {} };
+  }
+
+  if (key === 'comprehensive') {
+    const d = parseDate(answers.birthDate);
+    if (!d) throw new Error('生年月日を読み取れませんでした');
+    const t = parseTime(answers.birthTime);
+    const city = t.known ? resolveCity(answers.birthPlace) : null;
+
+    const chart = computeNatalChart({
+      year: d.year, month: d.month, day: d.day, hour: t.hour, minute: t.minute,
+      tzOffsetMinutes: JP_TZ, lat: city?.lat, lon: city?.lon, timeKnown: t.known && !!city,
+    });
+    const transits = forecastTransits(chart, new Date(), 36);
+    chart.transits = transits;
+    const fp = computeFourPillars({
+      year: d.year, month: d.month, day: d.day, hour: t.hour, minute: t.minute,
+      tzOffsetMinutes: JP_TZ, timeKnown: t.known, gender: answers.gender,
+    });
+    const num = computeNumerology(d.year, d.month, d.day);
+    let seimei = null;
+    if (answers.sei && answers.mei) seimei = computeSeimei(answers.sei, answers.mei);
+
+    // 本人の状況（占術の入力ではなく、アドバイスを具体化する文脈）
+    const ctx = [];
+    if (answers.theme) ctx.push(`相談テーマ: ${answers.theme}`);
+    if (answers.job) ctx.push(`職業: ${answers.job}`);
+    if (answers.tenure) ctx.push(`勤続年数: ${answers.tenure}`);
+    if (answers.income) ctx.push(`年収: ${answers.income}`);
+
+    const parts = [
+      '《西洋占星術》\n' + summarizeChart(chart) + '\n' + summarizeTransits(transits),
+      '《四柱推命》\n' + summarizeFourPillars(fp),
+      '《数秘術》\n' + summarizeNumerology(num),
+    ];
+    if (seimei && !seimei.error) parts.push('《姓名判断》\n' + summarizeSeimei(seimei));
+    if (ctx.length) parts.push('《相談者の状況（文脈）》\n' + ctx.join('\n'));
+
+    return {
+      title: '総合鑑定',
+      data: { astrology: chart, fourpillars: fp, numerology: num, seimei, context: { theme: answers.theme, job: answers.job, tenure: answers.tenure, income: answers.income } },
+      material: parts.join('\n\n'),
+      meta: { timeKnown: t.known, place: city?.matched || null, hasName: !!seimei },
+    };
+  }
+
   throw new Error('unsupported');
 }
 
@@ -103,6 +160,34 @@ export function buildMessages(key, computed, answers) {
       '■ 各ポジションのカードの意味（正位置・逆位置を、相談内容に引きつけて噛み砕く）\n' +
       '■ これからどうすると良いか（最重要・厚めに）… 相談内容に対して、今日から取れる具体的な一歩を複数、場面つきで提案する\n' +
       '全体で700〜900字程度。カード名の専門的な含意は日常語で説明すること。';
+  } else if (key === 'seimei') {
+    instruction =
+      '姓名判断の鑑定文を作ってください。次の見出しで構成します。\n' +
+      '■ 名前が示すあなた（人格＝中心、地格・外格・総格を日常語で）\n' +
+      '■ 強みと気をつけたい面（吉凶と三才の配置を噛み砕く。画数の吉凶は一つの目安として、断定しすぎない）\n' +
+      '■ これからどう活かすか（具体的な行動を複数、場面つきで）\n' +
+      '全体で600〜800字程度。「五格」「三才」などの用語はその場で説明すること。';
+  } else if (key === 'numerology') {
+    instruction =
+      '数秘術の鑑定文を作ってください。ライフパスナンバーを軸に、次の見出しで構成します。\n' +
+      '■ あなたの本質（ライフパス・誕生数を噛み砕く）\n' +
+      '■ 持ち味と人生のテーマ\n' +
+      '■ これからどう活かすか（具体的な行動を複数、場面つきで）\n' +
+      '全体で500〜700字程度。';
+  } else if (key === 'comprehensive') {
+    instruction =
+      'これは複数の占術を統合する「総合鑑定」です。あなたは複数の占術を読める熟練の鑑定士として、' +
+      '西洋占星術・四柱推命・数秘術（＋あれば姓名判断）の結果を突き合わせ、ばらばらに並べるのではなく、' +
+      '共通して見えてくるその人の核・強み・今後の流れを一つの物語として統合してください。' +
+      '相談者の状況（テーマ・職業・勤続年数・年収など）が与えられている場合は、その現実に即してアドバイスを具体化します。\n' +
+      '次の見出しで構成します。\n' +
+      '■ 総合的に見たあなた（複数の占術が一致して指し示す核・強み。どの占術がそれを裏づけるか軽く触れつつ、専門用語は日常語で）\n' +
+      '■ 相談テーマへの見立て（与えられたテーマに、各占術の観点から答える）\n' +
+      '■ これからの見通しと転機【最重要・最も厚く】… 四柱推命の大運・流年と、占星術のトランジットのデータを突き合わせ、' +
+      '「何歳ごろ・西暦何年ごろに、どんな転機・山場・しんどい時期・追い風が来そうか」を時系列で具体的に語る。' +
+      '複数の占術が同じ時期を指している場合は特に注目点として強調する。困難が予想される時期は備え方とともに伝える\n' +
+      '■ 総合アドバイス（今日から始められる具体的な行動を、相談者の職業・状況に即して3〜4つ、場面つきで）\n' +
+      '全体で1200〜1500字程度。データにない出来事・時期を創作しないこと。年収など繊細な情報は、説教やネガティブな決めつけに使わず、前向きな選択肢の提案に使うこと。';
   }
 
   const user =

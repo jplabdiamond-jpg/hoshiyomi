@@ -78,6 +78,47 @@ export const DIVINATIONS = [
       },
     ],
   },
+  {
+    key: 'seimei',
+    ja: '姓名判断',
+    icon: '㊟',
+    tagline: '氏名の画数から五格と運勢を読む',
+    fields: [
+      { key: 'sei', label: '姓（漢字）', type: 'text', required: true, help: '例）鈴木' },
+      { key: 'mei', label: '名（漢字）', type: 'text', required: true, help: '例）一郎' },
+    ],
+  },
+  {
+    key: 'numerology',
+    ja: '数秘術',
+    icon: '🔢',
+    tagline: '生年月日からライフパスと本質を読む',
+    fields: [
+      { key: 'birthDate', label: '生年月日', type: 'date', required: true, help: '例）1990/5/15' },
+    ],
+  },
+  {
+    key: 'comprehensive',
+    ja: '総合鑑定',
+    icon: '✶',
+    tagline: '複数の占術を統合し、今後の見通しと総合アドバイスを出す',
+    privacyNote: 'フルネームや任意項目（職業・勤続年数・年収）は、鑑定文の精度を上げるためだけに使い、サーバーには保存しません（計算後に破棄）。入力は任意です。',
+    fields: [
+      { key: 'birthDate', label: '生年月日', type: 'date', required: true, help: '例）1990/5/15' },
+      { key: 'birthTime', label: '出生時刻', type: 'time', required: false, help: '例）10:30（不明でもOK）' },
+      { key: 'birthPlace', label: '出生地', type: 'place', required: false, help: '例）東京都（時刻が分かる場合のみ使用）' },
+      {
+        key: 'gender', label: '性別', type: 'select', required: true,
+        options: [{ value: 'male', label: '男性' }, { value: 'female', label: '女性' }],
+      },
+      { key: 'sei', label: '姓（漢字）', type: 'text', required: false, help: '姓名判断に使用。入力は任意' },
+      { key: 'mei', label: '名（漢字）', type: 'text', required: false, help: '姓名判断に使用。入力は任意' },
+      { key: 'theme', label: '相談したいテーマ', type: 'text', required: true, help: '例）仕事・転職／人間関係／全体運 など' },
+      { key: 'job', label: '職業（任意）', type: 'text', required: false, sensitive: true, help: 'アドバイスを具体的にするため。スキップ可' },
+      { key: 'tenure', label: '勤続年数（任意）', type: 'text', required: false, sensitive: true, help: '例）5年。スキップ可' },
+      { key: 'income', label: '年収（任意）', type: 'text', required: false, sensitive: true, help: '例）500万円。スキップ可（サーバー保存なし）' },
+    ],
+  },
 ];
 
 export function getDivination(key) {
