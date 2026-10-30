@@ -120,6 +120,79 @@ export const DIVINATIONS = [
       { key: 'lifestyle', label: '生活・習慣（任意）', type: 'text', required: false, sensitive: true, help: '例）毎日車通勤・運動不足・夜勤あり など。リスク評価に使用。スキップ可' },
     ],
   },
+  {
+    key: 'comprehensive_plus',
+    ja: '総合鑑定（詳細プラン）',
+    icon: '✺',
+    tagline: '日常の情報を細かく入力し、統計の精度を最大化して総合アドバイス',
+    privacyNote: '入力項目が多い詳細プランです。生活情報・フルネーム・任意の職業/年収などは鑑定の精度向上のためだけに使い、サーバーには保存しません（計算後に破棄）。答えたくない項目はスキップできます。',
+    fields: [
+      { key: 'birthDate', label: '生年月日', type: 'date', required: true, help: '例）1990/5/15' },
+      { key: 'birthTime', label: '出生時刻', type: 'time', required: false, help: '例）10:30（不明でもOK）' },
+      { key: 'birthPlace', label: '出生地', type: 'place', required: false, help: '例）東京都（時刻が分かる場合のみ使用）' },
+      {
+        key: 'gender', label: '性別', type: 'select', required: true,
+        options: [{ value: 'male', label: '男性' }, { value: 'female', label: '女性' }],
+      },
+      { key: 'sei', label: '姓（漢字）', type: 'text', required: false, help: '姓名判断に使用。任意' },
+      { key: 'mei', label: '名（漢字）', type: 'text', required: false, help: '姓名判断に使用。任意' },
+      { key: 'theme', label: '相談したいテーマ', type: 'text', required: true, help: '例）仕事／健康／お金／人間関係 など' },
+      { key: 'job', label: '職業（任意）', type: 'text', required: false, sensitive: true, help: '統計リスク評価に使用。スキップ可' },
+      { key: 'tenure', label: '勤続年数（任意）', type: 'text', required: false, sensitive: true, help: '例）5年。スキップ可' },
+      { key: 'income', label: '年収（任意）', type: 'text', required: false, sensitive: true, help: '例）500万円。保存なし。スキップ可' },
+      {
+        key: 'drinking', label: '飲酒', type: 'select', required: false, sensitive: true,
+        options: [
+          { value: 'none', label: '飲まない' }, { value: 'rare', label: '月に数回' },
+          { value: 'weekly', label: '週に数回' }, { value: 'daily', label: 'ほぼ毎日' },
+        ],
+      },
+      {
+        key: 'smoking', label: '喫煙', type: 'select', required: false, sensitive: true,
+        options: [
+          { value: 'none', label: '吸わない' }, { value: 'sometimes', label: '時々' }, { value: 'daily', label: '毎日' },
+        ],
+      },
+      {
+        key: 'sleep', label: '睡眠時間', type: 'select', required: false, sensitive: true,
+        options: [
+          { value: 'under6', label: '6時間未満' }, { value: '6to7', label: '6〜7時間' },
+          { value: '7to8', label: '7〜8時間' }, { value: 'over8', label: '8時間以上' },
+        ],
+      },
+      {
+        key: 'exercise', label: '運動習慣', type: 'select', required: false, sensitive: true,
+        options: [
+          { value: 'none', label: 'ほとんどしない' }, { value: 'light', label: '週1〜2回' }, { value: 'regular', label: '週3回以上' },
+        ],
+      },
+      {
+        key: 'commute', label: '通勤手段', type: 'select', required: false, sensitive: true,
+        options: [
+          { value: 'car', label: '車' }, { value: 'bike', label: 'バイク・自転車' },
+          { value: 'train', label: '電車・徒歩' }, { value: 'remote', label: '在宅中心' },
+        ],
+      },
+      {
+        key: 'worktime', label: '労働時間', type: 'select', required: false, sensitive: true,
+        options: [
+          { value: 'normal', label: '標準的' }, { value: 'long', label: 'やや長い' }, { value: 'verylong', label: 'かなり長い（残業多）' },
+        ],
+      },
+      {
+        key: 'diet', label: '食生活', type: 'select', required: false, sensitive: true,
+        options: [
+          { value: 'irregular', label: '外食・不規則' }, { value: 'normal', label: '普通' }, { value: 'healthy', label: '自炊・規則的' },
+        ],
+      },
+      {
+        key: 'stress', label: 'ストレス感', type: 'select', required: false, sensitive: true,
+        options: [
+          { value: 'low', label: '低い' }, { value: 'mid', label: '中くらい' }, { value: 'high', label: '高い' },
+        ],
+      },
+    ],
+  },
 ];
 
 export function getDivination(key) {

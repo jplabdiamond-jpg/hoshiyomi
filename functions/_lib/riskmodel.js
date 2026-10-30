@@ -58,23 +58,98 @@ export const RULES = [
   },
 ];
 
+// 構造化された生活要因（選択式）→ 分野別deltas。詳細プランで使用。
+// value は divinations.js の select の value と一致させる。
+export const STRUCTURED = {
+  drinking: {
+    label: '飲酒',
+    daily: { deltas: { 健康: -2, 金銭: -1 }, reason: '毎日の飲酒は肝臓・生活習慣病や出費の面で負担が大きい' },
+    weekly: { deltas: { 健康: -1 }, reason: '週数回の飲酒は量しだいで健康面に影響' },
+    rare: { deltas: {}, reason: '' },
+    none: { deltas: { 健康: 1 }, reason: '飲酒習慣がなく健康面で有利' },
+  },
+  smoking: {
+    label: '喫煙',
+    daily: { deltas: { 健康: -2, 身体安全: 0 }, reason: '毎日の喫煙は呼吸器・循環器リスクを高める' },
+    sometimes: { deltas: { 健康: -1 }, reason: '時々の喫煙も健康面でマイナス' },
+    none: { deltas: {}, reason: '' },
+  },
+  sleep: {
+    label: '睡眠時間',
+    under6: { deltas: { 健康: -1, メンタル: -1 }, reason: '睡眠6時間未満は体調と気分の乱れにつながりやすい' },
+    '6to7': { deltas: {}, reason: '' },
+    '7to8': { deltas: { 健康: 1 }, reason: '7〜8時間の睡眠は回復に理想的で健康面に有利' },
+    over8: { deltas: {}, reason: '' },
+  },
+  exercise: {
+    label: '運動習慣',
+    none: { deltas: { 健康: -1 }, reason: '運動不足は体力・代謝の低下につながりやすい' },
+    light: { deltas: {}, reason: '' },
+    regular: { deltas: { 健康: 1, メンタル: 1 }, reason: '週3回以上の運動は心身の健康に有利' },
+  },
+  commute: {
+    label: '通勤手段',
+    car: { deltas: { 身体安全: -1 }, reason: '車通勤は事故に遭う機会がやや増える' },
+    bike: { deltas: { 身体安全: -1 }, reason: 'バイク・自転車通勤は転倒・事故に注意' },
+    train: { deltas: {}, reason: '' },
+    remote: { deltas: { 身体安全: 1 }, reason: '在宅中心で移動由来のリスクが低い' },
+  },
+  worktime: {
+    label: '労働時間',
+    normal: { deltas: {}, reason: '' },
+    long: { deltas: { メンタル: -1 }, reason: 'やや長めの労働時間で疲労がたまりやすい' },
+    verylong: { deltas: { メンタル: -1, 健康: -1 }, reason: '長時間労働は心身の消耗リスクが高い' },
+  },
+  diet: {
+    label: '食生活',
+    irregular: { deltas: { 健康: -1 }, reason: '外食・不規則な食事は栄養の偏りに注意' },
+    normal: { deltas: {}, reason: '' },
+    healthy: { deltas: { 健康: 1 }, reason: '自炊・規則的な食事は健康面に有利' },
+  },
+  stress: {
+    label: 'ストレス感',
+    low: { deltas: {}, reason: '' },
+    mid: { deltas: { メンタル: -1 }, reason: '中程度のストレスが続くと消耗につながりやすい' },
+    high: { deltas: { メンタル: -2 }, reason: '高いストレス状態はメンタルの最優先ケア対象' },
+  },
+};
+
 /**
- * 文脈テキストから分野別リスクスコアを算出。
- * @param {object} ctx { job, theme, lifestyle }
+ * 職業テキスト＋構造化生活要因から分野別リスクスコアを算出。
+ * @param {object} answers 全回答（job, theme, lifestyle, drinking, smoking, sleep, …）
  */
-export function assessRisk(ctx) {
-  const text = [ctx.job, ctx.theme, ctx.lifestyle].filter(Boolean).join(' ');
+export function assessRisk(answers) {
+  const a = answers || {};
   const scores = Object.fromEntries(DOMAINS.map((d) => [d, 0]));
   const fired = [];
-  if (!text.trim()) return { scores, fired, hasInput: false };
+  let hasInput = false;
 
-  for (const rule of RULES) {
-    if (rule.keywords.some((k) => text.includes(k))) {
-      for (const [dom, v] of Object.entries(rule.deltas)) scores[dom] += v;
-      fired.push({ id: rule.id, reason: rule.reason, deltas: rule.deltas });
+  // 1) 職業などテキストからのキーワードルール
+  const text = [a.job, a.theme, a.lifestyle].filter(Boolean).join(' ');
+  if (text.trim()) {
+    hasInput = true;
+    for (const rule of RULES) {
+      if (rule.keywords.some((k) => text.includes(k))) {
+        for (const [dom, v] of Object.entries(rule.deltas)) scores[dom] += v;
+        fired.push({ id: rule.id, reason: rule.reason, deltas: rule.deltas });
+      }
     }
   }
-  return { scores, fired, hasInput: true };
+
+  // 2) 構造化された生活要因（詳細プラン）
+  for (const [field, table] of Object.entries(STRUCTURED)) {
+    const v = a[field];
+    if (v && table[v]) {
+      hasInput = true;
+      const entry = table[v];
+      if (Object.keys(entry.deltas).length) {
+        for (const [dom, dv] of Object.entries(entry.deltas)) scores[dom] += dv;
+        fired.push({ id: `${field}:${v}`, reason: entry.reason, deltas: entry.deltas });
+      }
+    }
+  }
+
+  return { scores, fired, hasInput };
 }
 
 export function summarizeRisk(r) {

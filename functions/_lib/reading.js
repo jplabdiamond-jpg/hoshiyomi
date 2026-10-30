@@ -79,7 +79,7 @@ export function computeDivination(key, answers) {
     return { title: '数秘術', data: res, material: summarizeNumerology(res), meta: {} };
   }
 
-  if (key === 'comprehensive') {
+  if (key === 'comprehensive' || key === 'comprehensive_plus') {
     const d = parseDate(answers.birthDate);
     if (!d) throw new Error('生年月日を読み取れませんでした');
     const t = parseTime(answers.birthTime);
@@ -99,7 +99,7 @@ export function computeDivination(key, answers) {
     let seimei = null;
     if (answers.sei && answers.mei) seimei = computeSeimei(answers.sei, answers.mei);
     const fengshui = computeFengShui(fp.solarYear, answers.gender);
-    const risk = assessRisk({ job: answers.job, theme: answers.theme, lifestyle: answers.lifestyle });
+    const risk = assessRisk(answers);
     const profile = computeProfileScore({
       risk, fp, chart, seimei, numerology: num,
       nowYear: fp.nowYear, birthYear: d.year,
@@ -190,7 +190,7 @@ export function buildMessages(key, computed, answers) {
       '■ 持ち味と人生のテーマ\n' +
       '■ これからどう活かすか（具体的な行動を複数、場面つきで）\n' +
       '全体で500〜700字程度。';
-  } else if (key === 'comprehensive') {
+  } else if (key === 'comprehensive' || key === 'comprehensive_plus') {
     instruction =
       'これは占い・統計・風水を統合する「総合鑑定」です。あなたは複数の体系を読める熟練の鑑定士として、' +
       '西洋占星術・四柱推命・数秘術（＋あれば姓名判断）＝宿命と性格、風水（本命卦・吉方位）＝環境、' +

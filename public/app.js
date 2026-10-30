@@ -104,9 +104,11 @@
 
     if (f.type === 'select') {
       input.disabled = true; input.placeholder = '下から選んでください';
-      setQuick(f.options.map((o) => ({
+      const chips = f.options.map((o) => ({
         label: o.label, onClick: () => { input.disabled = false; input.placeholder = 'メッセージを入力…'; answerField(o.value, o.label); },
-      })));
+      }));
+      if (!f.required) chips.push({ label: 'スキップ', ghost: true, onClick: () => { input.disabled = false; input.placeholder = 'メッセージを入力…'; answerField('', 'スキップ'); } });
+      setQuick(chips);
     } else {
       input.disabled = false; input.placeholder = f.help ? f.help.replace(/^例）/, '例: ') : 'メッセージを入力…';
       if (!f.required) {
@@ -241,7 +243,7 @@
         <div class="data-grid">${cell('ライフパス', d.lifePath.number + '・' + d.lifePath.title)}${cell('誕生数', d.birthDay.number + '・' + d.birthDay.title)}</div></div>`;
     }
 
-    if (data.divination === 'comprehensive') {
+    if (data.divination === 'comprehensive' || data.divination === 'comprehensive_plus') {
       const a = d.astrology, fp = d.fourpillars, num = d.numerology;
       const head = [
         cell('太陽星座', a.planets[0].sign),
