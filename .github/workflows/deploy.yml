@@ -22,4 +22,7 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: 7969ecaa0a1b9bacae1861547c2ec3fe
-        run: npx wrangler@3 pages deploy public --project-name=hoshiyomi --branch=main
+        run: |
+          # プロジェクトが無ければ作成（初回のみ。既存ならスキップ）
+          npx wrangler@3 pages project create hoshiyomi --production-branch=main || true
+          npx wrangler@3 pages deploy public --project-name=hoshiyomi --branch=main --commit-dirty=true
