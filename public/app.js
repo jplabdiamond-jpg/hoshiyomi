@@ -18,6 +18,13 @@
 
   let DIVS = [];
   const state = { stage: 'idle', div: null, fields: [], idx: 0, answers: {} };
+  const anonId = (() => {
+    try {
+      let v = localStorage.getItem('sv_anon');
+      if (!v) { v = (self.crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2); localStorage.setItem('sv_anon', v); }
+      return v;
+    } catch { return null; }
+  })();
 
   // ---------- 星空 ----------
   const canvas = document.getElementById('stars');
@@ -158,7 +165,7 @@
     try {
       const r = await fetch('/api/reading', {
         method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ divination: state.div.key, answers: state.answers }),
+        body: JSON.stringify({ divination: state.div.key, answers: state.answers, anonId }),
       });
       const data = await r.json();
       t.remove();
@@ -180,8 +187,29 @@
         ${panel}
         <div class="rbody">${formatReading(data.reading)}</div>
         <div class="disc">${esc(data.disclaimer)}</div>
+        ${data.readingId ? `<div class="fb" data-rid="${esc(data.readingId)}">
+          <span class="fb-q">この鑑定はしっくりきましたか？</span>
+          <button class="fb-btn" data-v="1">当たっている</button>
+          <button class="fb-btn" data-v="0">ちがう</button>
+        </div>` : ''}
       </div></div>`;
     chat.appendChild(wrap); scroll();
+    const fb = wrap.querySelector('.fb');
+    if (fb) wireFeedback(fb);
+  }
+
+  function wireFeedback(fb) {
+    const rid = fb.dataset.rid;
+    fb.querySelectorAll('.fb-btn').forEach((b) => b.onclick = async () => {
+      const accurate = b.dataset.v === '1';
+      fb.innerHTML = '<span class="fb-q">フィードバックありがとうございます。今後の精度向上に役立てます。</span>';
+      try {
+        await fetch('/api/feedback', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ reading_id: rid, anon_id: anonId, accurate }),
+        });
+      } catch {}
+    });
   }
 
   function formatReading(txt) {

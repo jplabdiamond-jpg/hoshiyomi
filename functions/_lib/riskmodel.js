@@ -6,6 +6,17 @@
 
 export const DOMAINS = ['身体安全', '健康', '金銭', '対人', 'メンタル', 'キャリア'];
 
+// 参照する一次情報（重みは確率そのものではなく、これらが示す傾向にもとづく順序的な目安）
+export const SOURCES = {
+  mhlw_smoking: '厚生労働省 e-ヘルスネット（喫煙と健康）',
+  mhlw_alcohol: '厚生労働省 e-ヘルスネット（飲酒）／健康に配慮した飲酒ガイドライン',
+  mhlw_sleep: '厚生労働省「健康づくりのための睡眠ガイド2023」',
+  mhlw_activity: '厚生労働省「健康づくりのための身体活動・運動ガイド2023」',
+  mhlw_diet: '厚生労働省 e-ヘルスネット（栄養・食生活）',
+  mhlw_overwork: '厚生労働省（過重労働・メンタルヘルス対策）',
+  npa_traffic: '警察庁 交通事故統計（運転機会と事故曝露）',
+};
+
 // ルール：text（職業＋テーマ＋生活メモ）に keyword が含まれたら deltas を適用
 export const RULES = [
   {
@@ -13,6 +24,7 @@ export const RULES = [
     keywords: ['ドライバー', '配送', '運送', 'トラック', 'タクシー', '運転手', '配達', '長距離'],
     deltas: { 身体安全: -2, 金銭: -1 },
     reason: '運転時間が長いほど交通事故に遭う確率が上がり、事故時は身体・金銭の負担も大きくなりやすい',
+    source: 'npa_traffic',
   },
   {
     id: 'sales_field',
@@ -62,52 +74,52 @@ export const RULES = [
 // value は divinations.js の select の value と一致させる。
 export const STRUCTURED = {
   drinking: {
-    label: '飲酒',
+    label: '飲酒', source: 'mhlw_alcohol',
     daily: { deltas: { 健康: -2, 金銭: -1 }, reason: '毎日の飲酒は肝臓・生活習慣病や出費の面で負担が大きい' },
     weekly: { deltas: { 健康: -1 }, reason: '週数回の飲酒は量しだいで健康面に影響' },
     rare: { deltas: {}, reason: '' },
     none: { deltas: { 健康: 1 }, reason: '飲酒習慣がなく健康面で有利' },
   },
   smoking: {
-    label: '喫煙',
+    label: '喫煙', source: 'mhlw_smoking',
     daily: { deltas: { 健康: -2, 身体安全: 0 }, reason: '毎日の喫煙は呼吸器・循環器リスクを高める' },
     sometimes: { deltas: { 健康: -1 }, reason: '時々の喫煙も健康面でマイナス' },
     none: { deltas: {}, reason: '' },
   },
   sleep: {
-    label: '睡眠時間',
+    label: '睡眠時間', source: 'mhlw_sleep',
     under6: { deltas: { 健康: -1, メンタル: -1 }, reason: '睡眠6時間未満は体調と気分の乱れにつながりやすい' },
     '6to7': { deltas: {}, reason: '' },
     '7to8': { deltas: { 健康: 1 }, reason: '7〜8時間の睡眠は回復に理想的で健康面に有利' },
     over8: { deltas: {}, reason: '' },
   },
   exercise: {
-    label: '運動習慣',
+    label: '運動習慣', source: 'mhlw_activity',
     none: { deltas: { 健康: -1 }, reason: '運動不足は体力・代謝の低下につながりやすい' },
     light: { deltas: {}, reason: '' },
     regular: { deltas: { 健康: 1, メンタル: 1 }, reason: '週3回以上の運動は心身の健康に有利' },
   },
   commute: {
-    label: '通勤手段',
+    label: '通勤手段', source: 'npa_traffic',
     car: { deltas: { 身体安全: -1 }, reason: '車通勤は事故に遭う機会がやや増える' },
     bike: { deltas: { 身体安全: -1 }, reason: 'バイク・自転車通勤は転倒・事故に注意' },
     train: { deltas: {}, reason: '' },
     remote: { deltas: { 身体安全: 1 }, reason: '在宅中心で移動由来のリスクが低い' },
   },
   worktime: {
-    label: '労働時間',
+    label: '労働時間', source: 'mhlw_overwork',
     normal: { deltas: {}, reason: '' },
     long: { deltas: { メンタル: -1 }, reason: 'やや長めの労働時間で疲労がたまりやすい' },
     verylong: { deltas: { メンタル: -1, 健康: -1 }, reason: '長時間労働は心身の消耗リスクが高い' },
   },
   diet: {
-    label: '食生活',
+    label: '食生活', source: 'mhlw_diet',
     irregular: { deltas: { 健康: -1 }, reason: '外食・不規則な食事は栄養の偏りに注意' },
     normal: { deltas: {}, reason: '' },
     healthy: { deltas: { 健康: 1 }, reason: '自炊・規則的な食事は健康面に有利' },
   },
   stress: {
-    label: 'ストレス感',
+    label: 'ストレス感', source: 'mhlw_overwork',
     low: { deltas: {}, reason: '' },
     mid: { deltas: { メンタル: -1 }, reason: '中程度のストレスが続くと消耗につながりやすい' },
     high: { deltas: { メンタル: -2 }, reason: '高いストレス状態はメンタルの最優先ケア対象' },
@@ -122,6 +134,7 @@ export function assessRisk(answers) {
   const a = answers || {};
   const scores = Object.fromEntries(DOMAINS.map((d) => [d, 0]));
   const fired = [];
+  const usedSources = new Set();
   let hasInput = false;
 
   // 1) 職業などテキストからのキーワードルール
@@ -131,7 +144,8 @@ export function assessRisk(answers) {
     for (const rule of RULES) {
       if (rule.keywords.some((k) => text.includes(k))) {
         for (const [dom, v] of Object.entries(rule.deltas)) scores[dom] += v;
-        fired.push({ id: rule.id, reason: rule.reason, deltas: rule.deltas });
+        if (rule.source) usedSources.add(rule.source);
+        fired.push({ id: rule.id, reason: rule.reason, deltas: rule.deltas, source: rule.source });
       }
     }
   }
@@ -144,12 +158,14 @@ export function assessRisk(answers) {
       const entry = table[v];
       if (Object.keys(entry.deltas).length) {
         for (const [dom, dv] of Object.entries(entry.deltas)) scores[dom] += dv;
-        fired.push({ id: `${field}:${v}`, reason: entry.reason, deltas: entry.deltas });
+        if (table.source) usedSources.add(table.source);
+        fired.push({ id: `${field}:${v}`, reason: entry.reason, deltas: entry.deltas, source: table.source });
       }
     }
   }
 
-  return { scores, fired, hasInput };
+  const sources = [...usedSources].map((k) => SOURCES[k]).filter(Boolean);
+  return { scores, fired, hasInput, sources };
 }
 
 export function summarizeRisk(r) {
@@ -163,5 +179,9 @@ export function summarizeRisk(r) {
   );
   lines.push('根拠:');
   for (const f of r.fired) lines.push(`・${f.reason}`);
+  if (r.sources && r.sources.length) {
+    lines.push('参考（傾向の出典）: ' + r.sources.join(' / '));
+    lines.push('※重みは確率そのものではなく、上記が示す傾向にもとづく順序的な目安です。');
+  }
   return lines.join('\n');
 }

@@ -64,6 +64,21 @@ export async function onRequestPost(context) {
       (aiError ? `\n[詳細: ${aiError}]` : '');
   }
 
+  // 鑑定履歴を D1 に記録（任意・失敗しても鑑定は返す）
+  let readingId = null;
+  if (env.DB) {
+    try {
+      readingId = crypto.randomUUID();
+      await env.DB.prepare(
+        'INSERT INTO readings (id, anon_id, divination, input_json, summary, model) VALUES (?, ?, ?, ?, ?, ?)'
+      ).bind(
+        readingId, (body.anonId || null), divination,
+        JSON.stringify(answers).slice(0, 4000),
+        computed.material.slice(0, 4000), model
+      ).run();
+    } catch { readingId = null; }
+  }
+
   return json({
     divination,
     title: computed.title,
@@ -73,6 +88,7 @@ export async function onRequestPost(context) {
     reading,
     disclaimer: DISCLAIMER,
     model,
+    readingId,
   });
 }
 
