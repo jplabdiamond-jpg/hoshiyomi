@@ -264,6 +264,16 @@
         ).join('');
         rk = `<h4>統計リスク傾向（目安）</h4><div class="balance">${chips}</div><div style="font-size:11.5px;color:var(--muted);margin-top:5px">※一般的な傾向にもとづく目安（実測確率ではありません）</div>`;
       }
+      // 分野別の偏差（統計＋占いの合算）
+      let dev = '';
+      if (d.profile) {
+        const p = d.profile;
+        const rows = Object.keys(p.net).map((dom) => {
+          const n = p.net[dom];
+          return `<div class="dev-row"><span class="dev-dom">${dom}</span><span class="dev-net ${n < 0 ? 'neg' : n > 0 ? 'pos' : ''}">${n > 0 ? '+' : ''}${n}</span><span class="dev-brk">統計${p.statistical[dom] > 0 ? '+' : ''}${p.statistical[dom]}・占い${p.occult[dom] > 0 ? '+' : ''}${p.occult[dom]}</span></div>`;
+        }).join('');
+        dev = `<h4>分野別の偏差（平均0からのズレ ＝ 統計＋占い）</h4><div class="devtable">${rows}</div>`;
+      }
       // 時期予測タイムライン（大運の転機＋トランジット上位）
       let tl = '';
       const turns = (fp.daYun ? fp.daYun.pillars.filter((p) => p.note) : [])
@@ -272,7 +282,7 @@
         .map((h) => `<div class="tl-item turn"><span class="tl-age">${esc(h.ym)}</span><span class="tl-g">${esc(h.transit)}→${esc(h.natal)}</span><span class="tl-note">${esc(h.theme)}</span></div>`);
       if (turns.length || tr.length) tl = `<h4>注目の時期（四柱推命×占星術）</h4><div class="timeline">${turns.join('')}${tr.join('')}</div>`;
       return `<div class="rbody" style="border-bottom:1px solid var(--line)">
-        <h4 style="margin-top:0">総合プロフィール</h4><div class="data-grid">${head.join('')}</div>${fs}${rk}${tl}</div>`;
+        <h4 style="margin-top:0">総合プロフィール</h4><div class="data-grid">${head.join('')}</div>${fs}${rk}${dev}${tl}</div>`;
     }
 
     if (data.divination === 'tarot') {

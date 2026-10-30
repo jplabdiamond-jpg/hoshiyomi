@@ -6,6 +6,7 @@ import { computeSeimei, summarizeSeimei } from './seimei.js';
 import { computeNumerology, summarizeNumerology } from './numerology.js';
 import { computeFengShui, summarizeFengShui } from './fengshui.js';
 import { assessRisk, summarizeRisk } from './riskmodel.js';
+import { computeProfileScore, summarizeProfileScore } from './profilescore.js';
 import { getDivination, resolveCity, parseDate, parseTime } from './divinations.js';
 
 const JP_TZ = 540; // 日本標準時（分）
@@ -99,6 +100,10 @@ export function computeDivination(key, answers) {
     if (answers.sei && answers.mei) seimei = computeSeimei(answers.sei, answers.mei);
     const fengshui = computeFengShui(fp.solarYear, answers.gender);
     const risk = assessRisk({ job: answers.job, theme: answers.theme, lifestyle: answers.lifestyle });
+    const profile = computeProfileScore({
+      risk, fp, chart, seimei, numerology: num,
+      nowYear: fp.nowYear, birthYear: d.year,
+    });
 
     // 本人の状況（占術の入力ではなく、アドバイスを具体化する文脈）
     const ctx = [];
@@ -117,11 +122,12 @@ export function computeDivination(key, answers) {
     if (seimei && !seimei.error) parts.push('《姓名判断》\n' + summarizeSeimei(seimei));
     if (ctx.length) parts.push('《相談者の状況（文脈）》\n' + ctx.join('\n'));
     parts.push('《統計リスク層》\n' + summarizeRisk(risk));
+    parts.push('《分野別の偏差（統計＋占いを合算した、平均からのズレ）》\n' + summarizeProfileScore(profile));
 
     return {
       title: '総合鑑定',
       data: {
-        astrology: chart, fourpillars: fp, numerology: num, seimei, fengshui, risk,
+        astrology: chart, fourpillars: fp, numerology: num, seimei, fengshui, risk, profile,
         context: { theme: answers.theme, job: answers.job, tenure: answers.tenure, income: answers.income, lifestyle: answers.lifestyle },
       },
       material: parts.join('\n\n'),
@@ -193,9 +199,10 @@ export function buildMessages(key, computed, answers) {
       '■ 総合的に見たあなた（複数の占術が一致して指す核・強み。どの体系が裏づけるか軽く触れ、専門用語は日常語で）\n' +
       '■ 相談テーマへの見立て（与えられたテーマに、各体系の観点から答える）\n' +
       '■ これからの見通しと転機【重要】… 四柱推命の大運・流年と占星術のトランジットを突き合わせ、「何歳ごろ・西暦何年ごろにどんな転機・山場・追い風が来そうか」を時系列で。複数の占術が同じ時期を指す場合は強調する\n' +
-      '■ 分野別のリスクと対策【重要・具体的に】… 身体安全・健康・金銭・対人・メンタル・キャリアの各分野について、' +
-      '統計リスク層のスコアと根拠、占いの性質、風水を合わせて「どこに気をつけ、どう下げるか」を書く。' +
-      'リスクは運命ではなく“対策で下げられるもの”として前向きに。該当の薄い分野は簡潔でよい。数値（スコア）は絶対的な確率ではなく傾向の目安として扱う\n' +
+      '■ 分野別のリスクと対策【重要・具体的に】… 「分野別の偏差」データ（平均=0からのズレ。統計＋占いの合算）を軸に、' +
+      '偏差が大きい分野から順に扱う。各分野で「平均よりどれくらい・なぜズレているか（生活/職業の統計要因か、占いの要因か、両方か）」を一言で示し、' +
+      'マイナスの分野は“対策で平均側に戻せるもの”として具体的な下げ方を、プラスの分野は活かし方を書く。偏差が0の分野は省略可。' +
+      '数値は絶対的な確率ではなく傾向の目安として扱う\n' +
       '■ 推奨行動とラッキー方位（今日から始められる具体行動を職業・生活に即して3〜5つ。風水の吉方位＝発展・健康・人間関係・安定の方角も、使える場面つきで一言添える）\n' +
       '全体で1400〜1700字程度。データにない出来事・時期・数値を創作しないこと。年収や生活情報は説教や決めつけに使わず、前向きな選択肢と具体的な対策の提案に使うこと。統計リスクは「一般的な傾向の目安」であり断定ではないと必要なら一言添える。';
   }
