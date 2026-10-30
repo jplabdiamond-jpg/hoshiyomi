@@ -95,6 +95,8 @@ h1 small{font-family:var(--sans);font-weight:400;font-size:11px;letter-spacing:.
 .balance{margin-top:10px;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .balance .bchip{display:inline-block;padding:3px 9px;border-radius:999px;background:rgba(138,125,255,.12);border:1px solid var(--line);color:var(--ink);font-size:12px}
 .balance .bchip.zero{opacity:.4}
+.balance .bchip.risk-neg{border-color:rgba(255,140,140,.5);color:#ffb4b4;background:rgba(255,120,120,.1)}
+.balance .bchip.risk-pos{border-color:rgba(150,230,170,.5);color:#bfe8c8;background:rgba(120,220,150,.1)}
 .timeline{display:flex;flex-direction:column;gap:5px;margin:4px 0 2px}
 .tl-item{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;padding:7px 10px;border-radius:9px;background:rgba(12,14,30,.5);border:1px solid var(--line)}
 .tl-item.turn{border-color:rgba(231,201,139,.4);background:rgba(231,201,139,.07)}

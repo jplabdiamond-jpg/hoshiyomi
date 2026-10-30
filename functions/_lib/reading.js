@@ -4,6 +4,8 @@ import { computeFourPillars, summarizeFourPillars } from './fourpillars.js';
 import { drawTarot, summarizeTarot } from './tarot.js';
 import { computeSeimei, summarizeSeimei } from './seimei.js';
 import { computeNumerology, summarizeNumerology } from './numerology.js';
+import { computeFengShui, summarizeFengShui } from './fengshui.js';
+import { assessRisk, summarizeRisk } from './riskmodel.js';
 import { getDivination, resolveCity, parseDate, parseTime } from './divinations.js';
 
 const JP_TZ = 540; // 日本標準時（分）
@@ -95,6 +97,8 @@ export function computeDivination(key, answers) {
     const num = computeNumerology(d.year, d.month, d.day);
     let seimei = null;
     if (answers.sei && answers.mei) seimei = computeSeimei(answers.sei, answers.mei);
+    const fengshui = computeFengShui(fp.solarYear, answers.gender);
+    const risk = assessRisk({ job: answers.job, theme: answers.theme, lifestyle: answers.lifestyle });
 
     // 本人の状況（占術の入力ではなく、アドバイスを具体化する文脈）
     const ctx = [];
@@ -102,18 +106,24 @@ export function computeDivination(key, answers) {
     if (answers.job) ctx.push(`職業: ${answers.job}`);
     if (answers.tenure) ctx.push(`勤続年数: ${answers.tenure}`);
     if (answers.income) ctx.push(`年収: ${answers.income}`);
+    if (answers.lifestyle) ctx.push(`生活・習慣: ${answers.lifestyle}`);
 
     const parts = [
       '《西洋占星術》\n' + summarizeChart(chart) + '\n' + summarizeTransits(transits),
       '《四柱推命》\n' + summarizeFourPillars(fp),
       '《数秘術》\n' + summarizeNumerology(num),
+      '《風水（八宅）》\n' + summarizeFengShui(fengshui),
     ];
     if (seimei && !seimei.error) parts.push('《姓名判断》\n' + summarizeSeimei(seimei));
     if (ctx.length) parts.push('《相談者の状況（文脈）》\n' + ctx.join('\n'));
+    parts.push('《統計リスク層》\n' + summarizeRisk(risk));
 
     return {
       title: '総合鑑定',
-      data: { astrology: chart, fourpillars: fp, numerology: num, seimei, context: { theme: answers.theme, job: answers.job, tenure: answers.tenure, income: answers.income } },
+      data: {
+        astrology: chart, fourpillars: fp, numerology: num, seimei, fengshui, risk,
+        context: { theme: answers.theme, job: answers.job, tenure: answers.tenure, income: answers.income, lifestyle: answers.lifestyle },
+      },
       material: parts.join('\n\n'),
       meta: { timeKnown: t.known, place: city?.matched || null, hasName: !!seimei },
     };
@@ -176,18 +186,18 @@ export function buildMessages(key, computed, answers) {
       '全体で500〜700字程度。';
   } else if (key === 'comprehensive') {
     instruction =
-      'これは複数の占術を統合する「総合鑑定」です。あなたは複数の占術を読める熟練の鑑定士として、' +
-      '西洋占星術・四柱推命・数秘術（＋あれば姓名判断）の結果を突き合わせ、ばらばらに並べるのではなく、' +
-      '共通して見えてくるその人の核・強み・今後の流れを一つの物語として統合してください。' +
-      '相談者の状況（テーマ・職業・勤続年数・年収など）が与えられている場合は、その現実に即してアドバイスを具体化します。\n' +
+      'これは占い・統計・風水を統合する「総合鑑定」です。あなたは複数の体系を読める熟練の鑑定士として、' +
+      '西洋占星術・四柱推命・数秘術（＋あれば姓名判断）＝宿命と性格、風水（本命卦・吉方位）＝環境、' +
+      '統計リスク層＝生活・職業からの傾向、の3種を突き合わせて一つの物語に統合してください。ばらばらに並べないこと。\n' +
       '次の見出しで構成します。\n' +
-      '■ 総合的に見たあなた（複数の占術が一致して指し示す核・強み。どの占術がそれを裏づけるか軽く触れつつ、専門用語は日常語で）\n' +
-      '■ 相談テーマへの見立て（与えられたテーマに、各占術の観点から答える）\n' +
-      '■ これからの見通しと転機【最重要・最も厚く】… 四柱推命の大運・流年と、占星術のトランジットのデータを突き合わせ、' +
-      '「何歳ごろ・西暦何年ごろに、どんな転機・山場・しんどい時期・追い風が来そうか」を時系列で具体的に語る。' +
-      '複数の占術が同じ時期を指している場合は特に注目点として強調する。困難が予想される時期は備え方とともに伝える\n' +
-      '■ 総合アドバイス（今日から始められる具体的な行動を、相談者の職業・状況に即して3〜4つ、場面つきで）\n' +
-      '全体で1200〜1500字程度。データにない出来事・時期を創作しないこと。年収など繊細な情報は、説教やネガティブな決めつけに使わず、前向きな選択肢の提案に使うこと。';
+      '■ 総合的に見たあなた（複数の占術が一致して指す核・強み。どの体系が裏づけるか軽く触れ、専門用語は日常語で）\n' +
+      '■ 相談テーマへの見立て（与えられたテーマに、各体系の観点から答える）\n' +
+      '■ これからの見通しと転機【重要】… 四柱推命の大運・流年と占星術のトランジットを突き合わせ、「何歳ごろ・西暦何年ごろにどんな転機・山場・追い風が来そうか」を時系列で。複数の占術が同じ時期を指す場合は強調する\n' +
+      '■ 分野別のリスクと対策【重要・具体的に】… 身体安全・健康・金銭・対人・メンタル・キャリアの各分野について、' +
+      '統計リスク層のスコアと根拠、占いの性質、風水を合わせて「どこに気をつけ、どう下げるか」を書く。' +
+      'リスクは運命ではなく“対策で下げられるもの”として前向きに。該当の薄い分野は簡潔でよい。数値（スコア）は絶対的な確率ではなく傾向の目安として扱う\n' +
+      '■ 推奨行動とラッキー方位（今日から始められる具体行動を職業・生活に即して3〜5つ。風水の吉方位＝発展・健康・人間関係・安定の方角も、使える場面つきで一言添える）\n' +
+      '全体で1400〜1700字程度。データにない出来事・時期・数値を創作しないこと。年収や生活情報は説教や決めつけに使わず、前向きな選択肢と具体的な対策の提案に使うこと。統計リスクは「一般的な傾向の目安」であり断定ではないと必要なら一言添える。';
   }
 
   const user =

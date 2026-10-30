@@ -114,9 +114,10 @@ export const DIVINATIONS = [
       { key: 'sei', label: '姓（漢字）', type: 'text', required: false, help: '姓名判断に使用。入力は任意' },
       { key: 'mei', label: '名（漢字）', type: 'text', required: false, help: '姓名判断に使用。入力は任意' },
       { key: 'theme', label: '相談したいテーマ', type: 'text', required: true, help: '例）仕事・転職／人間関係／全体運 など' },
-      { key: 'job', label: '職業（任意）', type: 'text', required: false, sensitive: true, help: 'アドバイスを具体的にするため。スキップ可' },
+      { key: 'job', label: '職業（任意）', type: 'text', required: false, sensitive: true, help: '統計リスクの評価とアドバイス具体化に使用。スキップ可' },
       { key: 'tenure', label: '勤続年数（任意）', type: 'text', required: false, sensitive: true, help: '例）5年。スキップ可' },
       { key: 'income', label: '年収（任意）', type: 'text', required: false, sensitive: true, help: '例）500万円。スキップ可（サーバー保存なし）' },
+      { key: 'lifestyle', label: '生活・習慣（任意）', type: 'text', required: false, sensitive: true, help: '例）毎日車通勤・運動不足・夜勤あり など。リスク評価に使用。スキップ可' },
     ],
   },
 ];

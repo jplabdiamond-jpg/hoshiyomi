@@ -233,6 +233,7 @@ export function computeFourPillars(o) {
 
   const result = {
     input: { ...o },
+    solarYear,
     solarLongitude: Number(lambda.toFixed(3)),
     year: pillarLabel(yStem, yBranch),
     month: pillarLabel(mStem, mBranch),

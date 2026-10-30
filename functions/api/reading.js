@@ -42,7 +42,7 @@ export async function onRequestPost(context) {
       const messages = buildMessages(divination, computed, answers);
       const resp = await env.AI.run(model, {
         messages,
-        max_tokens: divination === 'comprehensive' ? 3072 : 2048,
+        max_tokens: divination === 'comprehensive' ? 3584 : 2048,
         temperature: 0.85,
         top_p: 0.95,
         frequency_penalty: 0.5, // 同じ語の繰り返しを抑制

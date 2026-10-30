@@ -249,6 +249,21 @@
         cell('ライフパス', num.lifePath.number + '・' + num.lifePath.title),
       ];
       if (d.seimei && !d.seimei.error) head.push(cell('姓名・総格', d.seimei.kaku.総格.stroke + '画 ' + d.seimei.kaku.総格.luck));
+      if (d.fengshui) head.push(cell('本命卦', d.fengshui.kua + '・' + d.fengshui.gua + '（' + d.fengshui.group + '）'));
+      // 風水 吉方位
+      let fs = '';
+      if (d.fengshui) {
+        const L = d.fengshui.lucky;
+        fs = `<div class="balance" style="margin-top:8px">吉方位 <span class="bchip">発展 ${esc(L.生気)}</span><span class="bchip">健康 ${esc(L.天医)}</span><span class="bchip">人間関係 ${esc(L.延年)}</span><span class="bchip">安定 ${esc(L.伏位)}</span></div>`;
+      }
+      // 統計リスク スコア
+      let rk = '';
+      if (d.risk && d.risk.hasInput && d.risk.fired.length) {
+        const chips = Object.entries(d.risk.scores).map(([dom, v]) =>
+          `<span class="bchip${v < 0 ? ' risk-neg' : v > 0 ? ' risk-pos' : ''}">${dom} ${v > 0 ? '+' : ''}${v}</span>`
+        ).join('');
+        rk = `<h4>統計リスク傾向（目安）</h4><div class="balance">${chips}</div><div style="font-size:11.5px;color:var(--muted);margin-top:5px">※一般的な傾向にもとづく目安（実測確率ではありません）</div>`;
+      }
       // 時期予測タイムライン（大運の転機＋トランジット上位）
       let tl = '';
       const turns = (fp.daYun ? fp.daYun.pillars.filter((p) => p.note) : [])
@@ -257,7 +272,7 @@
         .map((h) => `<div class="tl-item turn"><span class="tl-age">${esc(h.ym)}</span><span class="tl-g">${esc(h.transit)}→${esc(h.natal)}</span><span class="tl-note">${esc(h.theme)}</span></div>`);
       if (turns.length || tr.length) tl = `<h4>注目の時期（四柱推命×占星術）</h4><div class="timeline">${turns.join('')}${tr.join('')}</div>`;
       return `<div class="rbody" style="border-bottom:1px solid var(--line)">
-        <h4 style="margin-top:0">総合プロフィール</h4><div class="data-grid">${head.join('')}</div>${tl}</div>`;
+        <h4 style="margin-top:0">総合プロフィール</h4><div class="data-grid">${head.join('')}</div>${fs}${rk}${tl}</div>`;
     }
 
     if (data.divination === 'tarot') {
