@@ -6,6 +6,12 @@ pages_build_output_dir = "public"
 [ai]
 binding = "AI"
 
+# D1（鑑定履歴・フィードバック）。env.DB として Functions から呼べる。
+[[d1_databases]]
+binding = "DB"
+database_name = "sibylla-vision"
+database_id = "bf7ac3ae-12b4-4ea8-878b-18e4aed2c95e"
+
 # 使用モデルを変えたい場合は Pages の環境変数に AI_MODEL を設定（既定は llama-3.3-70b）。
 # [vars]
 # AI_MODEL = "@cf/qwen/qwen1.5-14b-chat-awq"
