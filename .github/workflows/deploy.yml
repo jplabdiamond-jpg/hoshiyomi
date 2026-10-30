@@ -2,7 +2,7 @@ name: Deploy to Cloudflare Pages
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   workflow_dispatch:
 
 jobs:
@@ -25,4 +25,4 @@ jobs:
         run: |
           # プロジェクトが無ければ作成（初回のみ。既存ならスキップ）
           npx wrangler@3 pages project create hoshiyomi --production-branch=main || true
-          npx wrangler@3 pages deploy public --project-name=hoshiyomi --branch=main --commit-dirty=true
+          npx wrangler@3 pages deploy public --project-name=hoshiyomi --branch=${{ github.ref_name }} --commit-dirty=true

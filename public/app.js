@@ -182,14 +182,21 @@
   function renderData(data) {
     const d = data.data;
     if (data.divination === 'fourpillars') {
-      const ps = [['年柱', d.year], ['月柱', d.month], ['日柱', d.day]];
-      if (d.hour) ps.push(['時柱', d.hour]);
-      const pillars = ps.map(([lbl, p]) =>
-        `<div class="pillar"><div class="lbl">${lbl}</div><div class="kanshi">${esc(p.kanshi)}</div><div class="el">${esc(p.element)}</div></div>`
+      const tg = d.tenGods || {};
+      const ps = [['年柱', d.year, tg.year], ['月柱', d.month, tg.month], ['日柱', d.day, '日主']];
+      if (d.hour) ps.push(['時柱', d.hour, tg.hour]);
+      const pillars = ps.map(([lbl, p, god]) =>
+        `<div class="pillar"><div class="lbl">${lbl}</div><div class="kanshi">${esc(p.kanshi)}</div><div class="el">${esc(p.element)}</div>${god ? `<div class="god">${esc(god)}</div>` : ''}</div>`
       ).join('');
+      const b = d.elementBalance || {};
+      const bal = ['木', '火', '土', '金', '水'].map((e) =>
+        `<span class="bchip${(b[e] || 0) === 0 ? ' zero' : ''}">${e}${b[e] || 0}</span>`
+      ).join('');
+      const str = d.dayMasterStrength ? d.dayMasterStrength.label : '';
       return `<div class="rbody" style="border-bottom:1px solid var(--line)">
         <h4 style="margin-top:0">命式</h4><div class="pillars">${pillars}</div>
-        <div style="margin-top:8px;font-size:12.5px;color:var(--muted)">日主（あなたの核）：<b style="color:var(--gold)">${esc(d.dayMaster.stem)}（${esc(d.dayMaster.element)}）</b></div>
+        <div class="balance">五行バランス ${bal}</div>
+        <div style="margin-top:6px;font-size:12.5px;color:var(--muted)">日主（あなたの核）：<b style="color:var(--gold)">${esc(d.dayMaster.stem)}（${esc(d.dayMaster.element)}）</b>　${esc(str)}</div>
       </div>`;
     }
     if (data.divination === 'astrology') {

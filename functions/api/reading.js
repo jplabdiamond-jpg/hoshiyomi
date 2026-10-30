@@ -42,8 +42,11 @@ export async function onRequestPost(context) {
       const messages = buildMessages(divination, computed, answers);
       const resp = await env.AI.run(model, {
         messages,
-        max_tokens: 1024,
-        temperature: 0.8,
+        max_tokens: 1536,
+        temperature: 0.85,
+        top_p: 0.95,
+        frequency_penalty: 0.6, // 同じ語の繰り返しを抑制
+        presence_penalty: 0.4,  // 話題の広がりを促す
       });
       reading = (resp && (resp.response || resp.result || '')).trim();
     } catch (e) {

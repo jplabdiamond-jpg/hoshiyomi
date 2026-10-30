@@ -179,6 +179,7 @@ export function computeNatalChart(o) {
       longitude: lon,
       sign: s.sign.ja,
       element: s.sign.element,
+      quality: s.sign.quality,
       position: s.label,
       retrograde: isRetrograde(pl.body, time),
     };
@@ -208,6 +209,17 @@ export function computeNatalChart(o) {
   return result;
 }
 
+// エレメント・クオリティのバランス集計（10天体）
+function balanceOf(planets) {
+  const el = { 火: 0, 地: 0, 風: 0, 水: 0 };
+  const ql = { 活動: 0, 不動: 0, 柔軟: 0 };
+  for (const p of planets) {
+    if (p.element in el) el[p.element]++;
+    if (p.quality in ql) ql[p.quality]++;
+  }
+  return { el, ql };
+}
+
 // 要約（鑑定文生成プロンプト用の素材）
 export function summarizeChart(chart) {
   const lines = [];
@@ -218,6 +230,9 @@ export function summarizeChart(chart) {
   }
   if (chart.ascendant) lines.push(`アセンダント: ${chart.ascendant.label}`);
   if (chart.mc) lines.push(`MC: ${chart.mc.label}`);
+  const { el, ql } = balanceOf(chart.planets);
+  lines.push(`エレメント傾向: 火${el.火}・地${el.地}・風${el.風}・水${el.水}`);
+  lines.push(`クオリティ傾向: 活動${ql.活動}・不動${ql.不動}・柔軟${ql.柔軟}`);
   const asp = chart.aspects
     .slice(0, 8)
     .map((a) => `${a.a}${a.aspect}${a.b}(orb${a.orb}°)`)

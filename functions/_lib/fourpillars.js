@@ -32,6 +32,34 @@ const BRANCH_INFO = [
   { ja: '亥', element: '水', zodiac: '猪' },
 ];
 
+// 五行のインデックス（相生の順）：木0→火1→土2→金3→水4→木…
+const ELEMENT_INDEX = { 木: 0, 火: 1, 土: 2, 金: 3, 水: 4 };
+const ELEMENT_NAMES = ['木', '火', '土', '金', '水'];
+
+// 日主（dm）から見た、ある天干の十神を返す
+function tenGod(dmStemIdx, otherStemIdx) {
+  const dm = STEM_INFO[dmStemIdx];
+  const o = STEM_INFO[otherStemIdx];
+  const diff = (ELEMENT_INDEX[o.element] - ELEMENT_INDEX[dm.element] + 5) % 5;
+  const same = dm.yin === o.yin; // 同じ陰陽か
+  const table = [
+    ['比肩', '劫財'], // diff0: 同じ五行
+    ['食神', '傷官'], // diff1: 我が生む（表現・才能）
+    ['偏財', '正財'], // diff2: 我が剋す（お金・現実）
+    ['偏官', '正官'], // diff3: 我を剋す（規律・プレッシャー）
+    ['偏印', '正印'], // diff4: 我を生む（支え・学び）
+  ];
+  return same ? table[diff][0] : table[diff][1];
+}
+
+// 八字（年月日時の天干4＋地支4）の五行バランスを集計
+function elementBalance(stems, branches) {
+  const count = { 木: 0, 火: 0, 土: 0, 金: 0, 水: 0 };
+  for (const s of stems) count[STEM_INFO[s].element]++;
+  for (const b of branches) count[BRANCH_INFO[b].element]++;
+  return count;
+}
+
 const DEG = 180 / Math.PI;
 function norm360(x) {
   x %= 360;
@@ -140,25 +168,61 @@ export function computeFourPillars(o) {
     dayMaster: { stem: STEMS[dStem], ...STEM_INFO[dStem] }, // 日主（命式の主体）
   };
 
+  // 時柱
+  let hStem = null, hBranch = null;
   if (o.timeKnown) {
-    // 時柱
-    const hBranch = Math.floor((hour + 1) / 2) % 12;
+    hBranch = Math.floor((hour + 1) / 2) % 12;
     const ratStem = ((dStem % 5) * 2) % 10; // 子時の干（五鼠遁）
-    const hStem = (ratStem + hBranch) % 10;
+    hStem = (ratStem + hBranch) % 10;
     result.hour = pillarLabel(hStem, hBranch);
   } else {
     result.notice = '出生時刻が不明のため、時柱は省略しています（年柱・月柱・日柱は有効です）。';
   }
+
+  // 五行バランス（天干・地支をすべて集計）
+  const stems = [yStem, mStem, dStem];
+  const branches = [yBranch, mBranch, dBranch];
+  if (o.timeKnown) { stems.push(hStem); branches.push(hBranch); }
+  const balance = elementBalance(stems, branches);
+  result.elementBalance = balance;
+  const total = Object.values(balance).reduce((a, b) => a + b, 0);
+  const sorted = ELEMENT_NAMES.slice().sort((a, b) => balance[b] - balance[a]);
+  result.elementStrongest = sorted[0];
+  result.elementMissing = ELEMENT_NAMES.filter((e) => balance[e] === 0);
+
+  // 十神（日主から見た 年干・月干・時干 の役割）
+  result.tenGods = {
+    year: tenGod(dStem, yStem),
+    month: tenGod(dStem, mStem),
+  };
+  if (o.timeKnown) result.tenGods.hour = tenGod(dStem, hStem);
+
+  // 身強・身弱の簡易判定：日主と同五行(比劫)＋日主を生む五行(印)の割合で概算
+  const dmE = ELEMENT_INDEX[STEM_INFO[dStem].element];
+  const supportE = [STEM_INFO[dStem].element, ELEMENT_NAMES[(dmE + 4) % 5]]; // 同五行＋生じる五行
+  const support = supportE.reduce((a, e) => a + balance[e], 0);
+  // 月令（月支の五行が日主を支えるか）を加味
+  const monthSupports = supportE.includes(BRANCH_INFO[mBranch].element);
+  result.dayMasterStrength = {
+    label: support >= total / 2 || (monthSupports && support >= total / 2 - 1) ? '身強（やや強め）' : '身弱（やや弱め）',
+    supportCount: support,
+    total,
+    monthSupports,
+    note: '※簡易判定。厳密な身強身弱は蔵干・通根も要考慮',
+  };
 
   return result;
 }
 
 export function summarizeFourPillars(fp) {
   const lines = [];
-  lines.push(`年柱: ${fp.year.kanshi}（${fp.year.element}／${fp.year.zodiac}年）`);
-  lines.push(`月柱: ${fp.month.kanshi}（${fp.month.element}）`);
-  lines.push(`日柱: ${fp.day.kanshi}（${fp.day.element}）← 日主=${fp.dayMaster.stem}(${fp.dayMaster.element})`);
-  if (fp.hour) lines.push(`時柱: ${fp.hour.kanshi}（${fp.hour.element}）`);
+  lines.push(`年柱: ${fp.year.kanshi}（${fp.year.element}／${fp.year.zodiac}年）… 十神:${fp.tenGods.year}`);
+  lines.push(`月柱: ${fp.month.kanshi}（${fp.month.element}）… 十神:${fp.tenGods.month}`);
+  lines.push(`日柱: ${fp.day.kanshi}（${fp.day.element}）← 日主=${fp.dayMaster.stem}(${fp.dayMaster.element}・${fp.dayMaster.yin ? '陰' : '陽'})`);
+  if (fp.hour) lines.push(`時柱: ${fp.hour.kanshi}（${fp.hour.element}）… 十神:${fp.tenGods.hour}`);
+  const b = fp.elementBalance;
+  lines.push(`五行バランス: 木${b.木}・火${b.火}・土${b.土}・金${b.金}・水${b.水}（最多:${fp.elementStrongest}${fp.elementMissing.length ? ` / 不足:${fp.elementMissing.join('')}` : ''}）`);
+  lines.push(`日主の強弱: ${fp.dayMasterStrength.label}（支える五行の数 ${fp.dayMasterStrength.supportCount}/${fp.dayMasterStrength.total}、月令の支え:${fp.dayMasterStrength.monthSupports ? 'あり' : 'なし'}）`);
   if (fp.notice) lines.push(`注意: ${fp.notice}`);
   return lines.join('\n');
 }
