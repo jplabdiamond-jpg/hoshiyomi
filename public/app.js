@@ -276,13 +276,7 @@
         }).join('');
         dev = `<h4>分野別の偏差（平均0からのズレ ＝ 統計＋占い）</h4><div class="devtable">${rows}</div>`;
       }
-      // 時期予測タイムライン（大運の転機＋トランジット上位）
-      let tl = '';
-      const turns = (fp.daYun ? fp.daYun.pillars.filter((p) => p.note) : [])
-        .map((p) => `<div class="tl-item turn"><span class="tl-age">${p.ageStart}〜${p.ageEnd}歳</span><span class="tl-k">${esc(p.kanshi)}</span><span class="tl-note">${esc(p.note)}</span></div>`);
-      const tr = (a.transits || []).slice(0, 5)
-        .map((h) => `<div class="tl-item turn"><span class="tl-age">${esc(h.ym)}</span><span class="tl-g">${esc(h.transit)}→${esc(h.natal)}</span><span class="tl-note">${esc(h.theme)}</span></div>`);
-      if (turns.length || tr.length) tl = `<h4>注目の時期（四柱推命×占星術）</h4><div class="timeline">${turns.join('')}${tr.join('')}</div>`;
+      const tl = renderForesight(d.foresight);
       return `<div class="rbody" style="border-bottom:1px solid var(--line)">
         <h4 style="margin-top:0">総合プロフィール</h4><div class="data-grid">${head.join('')}</div>${fs}${rk}${dev}${tl}</div>`;
     }
@@ -296,6 +290,33 @@
         <h4 style="margin-top:0">${esc(d.spread)}</h4><div class="cards">${cards}</div></div>`;
     }
     return '';
+  }
+
+  function renderForesight(f) {
+    if (!f) return '';
+    // 運気ヒートマップ（今後6年）
+    const col = (s) => s >= 2 ? '#7fe0a0' : s === 1 ? '#bfe8c8' : s === 0 ? 'rgba(150,160,220,.25)' : s === -1 ? '#e8c07f' : '#ff9b9b';
+    const heat = f.trend.map((t) =>
+      `<div class="heat-cell"><div class="heat-box" style="background:${col(t.score)}"></div><div class="heat-y">${String(t.year).slice(2)}</div></div>`
+    ).join('');
+    // 合致点（確度・高/中を強調）
+    const conv = f.convergence.filter((c) => c.srcCount > 0).map((c) => {
+      const cls = c.level === '高' ? 'conf-hi' : c.level === '中' ? 'conf-mid' : 'conf-lo';
+      return `<div class="tl-item ${c.level !== '低' ? 'turn' : ''}"><span class="tl-age">${c.year}年</span><span class="conf ${cls}">確度${c.level}</span><span class="tl-note">${esc(c.signals.map((s) => s.src).filter((v, i, a) => a.indexOf(v) === i).join('・'))}が示唆</span></div>`;
+    }).join('');
+    // 流月（今後6ヶ月）
+    const mon = f.months.slice(0, 6).map((m) =>
+      `<div class="tl-item ${m.clash ? 'turn' : ''}"><span class="tl-age">${esc(m.ym)}</span><span class="tl-k">${esc(m.kanshi)}</span><span class="tl-note">${esc(m.theme)}${m.clash ? '・変化' : ''}</span></div>`
+    ).join('');
+    // 節目
+    const ms = (f.milestones || []).map((x) =>
+      `<div class="tl-item turn"><span class="tl-age">${x.year}年</span><span class="tl-g">${esc(x.name)}</span><span class="tl-note">${esc(x.note)}</span></div>`
+    ).join('');
+    return `
+      <h4>運気ヒートマップ（今後6年）</h4><div class="heatmap">${heat}</div>
+      <h4>合致点（複数の占術が同じ年を指す＝確度）</h4><div class="timeline">${conv || '<div class="tl-item"><span class="tl-note">目立った合致はありません</span></div>'}</div>
+      ${ms ? `<h4>人生の節目</h4><div class="timeline">${ms}</div>` : ''}
+      <h4>流月（今後6ヶ月の運気）</h4><div class="timeline">${mon}</div>`;
   }
 
   function renderSeimei(d) {

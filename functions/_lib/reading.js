@@ -7,6 +7,7 @@ import { computeNumerology, summarizeNumerology } from './numerology.js';
 import { computeFengShui, summarizeFengShui } from './fengshui.js';
 import { assessRisk, summarizeRisk } from './riskmodel.js';
 import { computeProfileScore, summarizeProfileScore } from './profilescore.js';
+import { computeForesight, summarizeForesight } from './foresight.js';
 import { getDivination, resolveCity, parseDate, parseTime } from './divinations.js';
 
 const JP_TZ = 540; // 日本標準時（分）
@@ -104,6 +105,11 @@ export function computeDivination(key, answers) {
       risk, fp, chart, seimei, numerology: num,
       nowYear: fp.nowYear, birthYear: d.year,
     });
+    const now = new Date();
+    const foresight = computeForesight({
+      fp, chart, birthYear: d.year, birthMonth: d.month, birthDay: d.day,
+      gender: answers.gender, nowYear: now.getFullYear(), nowMonth: now.getMonth() + 1,
+    });
 
     // 本人の状況（占術の入力ではなく、アドバイスを具体化する文脈）
     const ctx = [];
@@ -123,11 +129,12 @@ export function computeDivination(key, answers) {
     if (ctx.length) parts.push('《相談者の状況（文脈）》\n' + ctx.join('\n'));
     parts.push('《統計リスク層》\n' + summarizeRisk(risk));
     parts.push('《分野別の偏差（統計＋占いを合算した、平均からのズレ）》\n' + summarizeProfileScore(profile));
+    parts.push('《未来予測（流月・パーソナルイヤー・節目・合致点）》\n' + summarizeForesight(foresight));
 
     return {
       title: '総合鑑定',
       data: {
-        astrology: chart, fourpillars: fp, numerology: num, seimei, fengshui, risk, profile,
+        astrology: chart, fourpillars: fp, numerology: num, seimei, fengshui, risk, profile, foresight,
         context: { theme: answers.theme, job: answers.job, tenure: answers.tenure, income: answers.income, lifestyle: answers.lifestyle },
       },
       material: parts.join('\n\n'),
@@ -198,7 +205,9 @@ export function buildMessages(key, computed, answers) {
       '次の見出しで構成します。\n' +
       '■ 総合的に見たあなた（複数の占術が一致して指す核・強み。どの体系が裏づけるか軽く触れ、専門用語は日常語で）\n' +
       '■ 相談テーマへの見立て（与えられたテーマに、各体系の観点から答える）\n' +
-      '■ これからの見通しと転機【重要】… 四柱推命の大運・流年と占星術のトランジットを突き合わせ、「何歳ごろ・西暦何年ごろにどんな転機・山場・追い風が来そうか」を時系列で。複数の占術が同じ時期を指す場合は強調する\n' +
+      '■ これからの見通しと転機【重要・未来予測を厚く】… 「未来予測」データ（流月＝月単位の運気、パーソナルイヤー、名前のある節目、合致点＝確度つき）を必ず使う。' +
+      '「合致点」で確度が高い年（複数系統が同じ年を指す年）を最優先で、「◯年ごろ（確度：高）は〜」と断定しすぎない範囲で強調する。' +
+      '直近は流月データを使い「◯年◯月ごろ」と月単位まで具体的に。サターンリターンや天戦地冲などの節目があれば人生の山場として触れる。困難が予想される時期は備え方とともに\n' +
       '■ 分野別のリスクと対策【重要・具体的に】… 「分野別の偏差」データ（平均=0からのズレ。統計＋占いの合算）を軸に、' +
       '偏差が大きい分野から順に扱う。各分野で「平均よりどれくらい・なぜズレているか（生活/職業の統計要因か、占いの要因か、両方か）」を一言で示し、' +
       'マイナスの分野は“対策で平均側に戻せるもの”として具体的な下げ方を、プラスの分野は活かし方を書く。偏差が0の分野は省略可。' +

@@ -103,6 +103,14 @@ h1 small{font-family:var(--sans);font-weight:400;font-size:11px;letter-spacing:.
 .dev-net{font-weight:700;min-width:34px;text-align:center;color:var(--muted)}
 .dev-net.neg{color:#ffb4b4}.dev-net.pos{color:#bfe8c8}
 .dev-brk{color:var(--muted);font-size:11.5px}
+.heatmap{display:flex;gap:6px;margin:4px 0}
+.heat-cell{flex:1;text-align:center}
+.heat-box{height:28px;border-radius:7px;border:1px solid var(--line)}
+.heat-y{font-size:11px;color:var(--muted);margin-top:3px}
+.conf{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;min-width:48px;text-align:center}
+.conf-hi{color:#120f22;background:var(--gold)}
+.conf-mid{color:var(--gold);background:rgba(231,201,139,.15);border:1px solid rgba(231,201,139,.4)}
+.conf-lo{color:var(--muted);background:rgba(150,160,220,.1)}
 .timeline{display:flex;flex-direction:column;gap:5px;margin:4px 0 2px}
 .tl-item{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;padding:7px 10px;border-radius:9px;background:rgba(12,14,30,.5);border:1px solid var(--line)}
 .tl-item.turn{border-color:rgba(231,201,139,.4);background:rgba(231,201,139,.07)}

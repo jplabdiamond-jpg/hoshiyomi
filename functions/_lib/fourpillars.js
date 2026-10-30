@@ -187,6 +187,33 @@ function pillarLabel(stem, branch) {
   };
 }
 
+// --- 予測モジュール(foresight)向けのエクスポート ---
+export { STEMS, BRANCHES, STEM_INFO, BRANCH_INFO, tenGod, isClash, pillarLabel };
+
+// 任意の年の年柱（立春補正は簡易に1〜2月のみ考慮）
+export function yearPillarOf(year) {
+  const yStem = ((year - 4) % 10 + 10) % 10;
+  const yBranch = ((year - 4) % 12 + 12) % 12;
+  return { stem: yStem, branch: yBranch };
+}
+
+// 任意の年月日の月柱（節入りを太陽黄経で判定）
+export function monthPillarForDate(y, m, d, tz = 540) {
+  const utcMs = Date.UTC(y, m - 1, d, 12, 0, 0) - tz * 60000;
+  const lambda = sunLongitude(new Date(utcMs));
+  let solarYear = y;
+  if (m <= 2) {
+    if (lambda >= 285 && lambda < 315) solarYear = y - 1;
+    else if (lambda < 285 && m === 1) solarYear = y - 1;
+  }
+  const yStem = ((solarYear - 4) % 10 + 10) % 10;
+  const k = Math.floor(norm360(lambda - 315) / 30);
+  const mBranch = (2 + k) % 12;
+  const tigerStem = ((yStem % 5) * 2 + 2) % 10;
+  const mStem = (tigerStem + ((mBranch - 2 + 12) % 12)) % 10;
+  return { stem: mStem, branch: mBranch };
+}
+
 /**
  * 四柱（年月日時）を算出する。
  * @param {object} o
@@ -239,6 +266,7 @@ export function computeFourPillars(o) {
     month: pillarLabel(mStem, mBranch),
     day: pillarLabel(dStem, dBranch),
     dayMaster: { stem: STEMS[dStem], ...STEM_INFO[dStem] }, // 日主（命式の主体）
+    dayStemIdx: dStem, dayBranchIdx: dBranch, yearBranchIdx: yBranch,
   };
 
   // 時柱
