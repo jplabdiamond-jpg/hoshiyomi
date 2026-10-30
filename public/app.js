@@ -1,5 +1,15 @@
-// 星詠 — AI占いエージェント フロントエンド（チャット制御）
+// Sibylla Vision — AI鑑定 フロントエンド（チャット制御）
 (() => {
+  const SIGIL = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.1"><path d="M2.5 12C5.3 8.3 8.4 6.7 12 6.7S18.7 8.3 21.5 12C18.7 15.7 15.6 17.3 12 17.3S5.3 15.7 2.5 12Z"/><circle cx="12" cy="12" r="2.5"/><path d="M12 9.3l.6 2.1 2.1.6-2.1.6-.6 2.1-.6-2.1-2.1-.6 2.1-.6z" fill="currentColor" stroke="none"/></svg>`;
+  const USERMARK = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.1"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2" fill="currentColor" stroke="none"/></svg>`;
+  const ICONS = {
+    astrology: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="12" cy="12" r="4.3"/><g stroke-linecap="round"><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.2 5.2l1.7 1.7M17.1 17.1l1.7 1.7M18.8 5.2l-1.7 1.7M6.9 17.1l-1.7 1.7"/></g></svg>`,
+    fourpillars: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3.5" y="3.5" width="17" height="17" rx="1"/><path d="M9 3.5v17M15 3.5v17"/></svg>`,
+    tarot: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3.5" y="6" width="8.5" height="12.5" rx="1" transform="rotate(-9 7.75 12.25)"/><rect x="11" y="5" width="8.5" height="12.5" rx="1" transform="rotate(9 15.25 11.25)"/></svg>`,
+    seimei: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="4" y="4" width="16" height="16" rx="1"/><path d="M12 7.5v9M8.5 11.5c1.6 0 3.5-1 3.5-4M15.5 11.5c-1.6 0-3.5-1-3.5-4" stroke-width="1"/></svg>`,
+    numerology: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg>`,
+    comprehensive_plus: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.1"><path d="M2.5 12C5.3 8.3 8.4 6.7 12 6.7S18.7 8.3 21.5 12C18.7 15.7 15.6 17.3 12 17.3S5.3 15.7 2.5 12Z"/><circle cx="12" cy="12" r="2.5"/><path d="M12 9.3l.6 2.1 2.1.6-2.1.6-.6 2.1-.6-2.1-2.1-.6 2.1-.6z" fill="currentColor" stroke="none"/></svg>`,
+  };
   const chat = document.getElementById('chat');
   const form = document.getElementById('composer');
   const input = document.getElementById('input');
@@ -39,13 +49,13 @@
   function bubble(role, html) {
     const m = document.createElement('div');
     m.className = `msg ${role}`;
-    m.innerHTML = `<div class="avatar">${role === 'bot' ? '☾' : '🙂'}</div><div class="bubble">${html}</div>`;
+    m.innerHTML = `<div class="avatar${role === 'bot' ? '' : ' u'}">${role === 'bot' ? SIGIL : USERMARK}</div><div class="bubble">${html}</div>`;
     chat.appendChild(m); scroll(); return m;
   }
   function typing() {
     const m = document.createElement('div');
     m.className = 'msg bot'; m.dataset.typing = '1';
-    m.innerHTML = `<div class="avatar">☾</div><div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>`;
+    m.innerHTML = `<div class="avatar">${SIGIL}</div><div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>`;
     chat.appendChild(m); scroll(); return m;
   }
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -69,7 +79,7 @@
     try {
       const r = await fetch('/api/divinations'); DIVS = (await r.json()).divinations;
     } catch { DIVS = []; }
-    await botSay('ようこそ、星詠へ。🌙<br>わたしがあなたの運命をお読みします。<br>まずは占いたいものを選んでください。', 300);
+    await botSay('Sibylla Vision へようこそ。<br>星の配置・生まれ持った命式に、統計と風水を重ねて、これからの流れをお読みします。<br>まずは占いたいものをお選びください。', 300);
     showPicker();
   }
 
@@ -78,10 +88,10 @@
     const wrap = document.createElement('div');
     wrap.className = 'msg bot';
     const cards = DIVS.map((d) =>
-      `<button class="pick" data-key="${d.key}"><span class="ic">${d.icon}</span>
+      `<button class="pick" data-key="${d.key}"><span class="ic">${ICONS[d.key] || ''}</span>
         <span><span class="ttl">${esc(d.ja)}</span><span class="tag">${esc(d.tagline)}</span></span></button>`
     ).join('');
-    wrap.innerHTML = `<div class="avatar">☾</div><div class="bubble" style="width:100%"><div class="picker">${cards}</div></div>`;
+    wrap.innerHTML = `<div class="avatar">${SIGIL}</div><div class="bubble" style="width:100%"><div class="picker">${cards}</div></div>`;
     chat.appendChild(wrap); scroll();
     wrap.querySelectorAll('.pick').forEach((b) => b.onclick = () => chooseDivination(b.dataset.key));
   }
@@ -331,7 +341,7 @@
 
   function offerRestart() {
     state.stage = 'done'; input.disabled = true; input.placeholder = 'もう一度占う場合は下のボタンから';
-    setQuick([{ label: '🔮 もう一度占う', onClick: () => { clearQuick(); showPicker(); } }]);
+    setQuick([{ label: 'もう一度占う', onClick: () => { clearQuick(); showPicker(); } }]);
   }
 
   // ---------- 入力送信 ----------

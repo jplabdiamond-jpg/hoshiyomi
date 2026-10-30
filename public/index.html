@@ -3,24 +3,35 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>星詠 — AI占いエージェント</title>
-<meta name="description" content="西洋占星術・四柱推命・タロットを、生まれた瞬間の正確な天文計算から鑑定するAI占いエージェント。" />
+<title>Sibylla Vision — 占い・統計・風水で未来を読む</title>
+<meta name="description" content="Sibylla Vision（シビラビジョン）— 西洋占星術・四柱推命・タロット・姓名判断・数秘術に統計と風水を重ね、今後の転機と対策を読み解くAI鑑定。" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;600;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Shippori+Mincho:wght@500;600;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
 <div class="sky" aria-hidden="true"><canvas id="stars"></canvas></div>
+<div class="grain" aria-hidden="true"></div>
+<div class="vignette" aria-hidden="true"></div>
 
 <header class="app-header">
   <div class="brand">
-    <span class="brand-mark">☾</span>
-    <div>
-      <h1>星詠 <small>hoshiyomi</small></h1>
-      <p>生まれた瞬間の星から読み解く、AI占いエージェント</p>
+    <span class="sigil" aria-hidden="true">
+      <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="24" cy="24" r="22" stroke="currentColor" stroke-width="0.8" opacity="0.5"/>
+        <path d="M6 24C12 16 18 14 24 14C30 14 36 16 42 24C36 32 30 34 24 34C18 34 12 32 6 24Z" stroke="currentColor" stroke-width="1.1"/>
+        <circle cx="24" cy="24" r="5.4" stroke="currentColor" stroke-width="1.1"/>
+        <path d="M24 10.5V5M24 43V37.5M24 24L24 24" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+        <path d="M24 17.2L25.4 22.6L30.8 24L25.4 25.4L24 30.8L22.6 25.4L17.2 24L22.6 22.6L24 17.2Z" fill="currentColor"/>
+      </svg>
+    </span>
+    <div class="wordmark">
+      <h1>SIBYLLA<span>VISION</span></h1>
+      <p>占い・統計・風水を重ね、<em>これからの転機</em>を読み解く</p>
     </div>
   </div>
+  <div class="rule" aria-hidden="true"><span></span><i>✦</i><span></span></div>
 </header>
 
 <main class="chat" id="chat" aria-live="polite"></main>
@@ -30,10 +41,10 @@
   <div class="composer-row">
     <input id="input" type="text" placeholder="メッセージを入力…" aria-label="メッセージ入力" />
     <button type="submit" id="send" aria-label="送信">
-      <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M3 11l18-8-8 18-2-7-8-3z"/></svg>
+      <svg viewBox="0 0 24 24" width="19" height="19"><path fill="currentColor" d="M4 12l15-7-6 15-2.5-6L4 12z"/></svg>
     </button>
   </div>
-  <p class="foot">※鑑定は娯楽・自己理解の目的でご利用ください。</p>
+  <p class="foot">鑑定は自己理解のための参考です。大切な判断はご自身で。</p>
 </form>
 
 <script src="/app.js"></script>
