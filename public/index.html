@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>星詠 — AI占いエージェント</title>
+<meta name="description" content="西洋占星術・四柱推命・タロットを、生まれた瞬間の正確な天文計算から鑑定するAI占いエージェント。" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;600;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<div class="sky" aria-hidden="true"><canvas id="stars"></canvas></div>
+
+<header class="app-header">
+  <div class="brand">
+    <span class="brand-mark">☾</span>
+    <div>
+      <h1>星詠 <small>hoshiyomi</small></h1>
+      <p>生まれた瞬間の星から読み解く、AI占いエージェント</p>
+    </div>
+  </div>
+</header>
+
+<main class="chat" id="chat" aria-live="polite"></main>
+
+<form class="composer" id="composer" autocomplete="off">
+  <div class="quick" id="quick"></div>
+  <div class="composer-row">
+    <input id="input" type="text" placeholder="メッセージを入力…" aria-label="メッセージ入力" />
+    <button type="submit" id="send" aria-label="送信">
+      <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M3 11l18-8-8 18-2-7-8-3z"/></svg>
+    </button>
+  </div>
+  <p class="foot">※鑑定は娯楽・自己理解の目的でご利用ください。</p>
+</form>
+
+<script src="/app.js"></script>
+</body>
+</html>

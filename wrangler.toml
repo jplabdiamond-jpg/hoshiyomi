@@ -1,0 +1,11 @@
+name = "hoshiyomi"
+compatibility_date = "2025-10-01"
+pages_build_output_dir = "public"
+
+# Cloudflare Workers AI（鑑定文生成）。env.AI として Functions から呼べる。
+[ai]
+binding = "AI"
+
+# 使用モデルを変えたい場合は Pages の環境変数に AI_MODEL を設定（既定は llama-3.3-70b）。
+# [vars]
+# AI_MODEL = "@cf/qwen/qwen1.5-14b-chat-awq"
