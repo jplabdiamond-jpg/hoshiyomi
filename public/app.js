@@ -481,8 +481,7 @@
           <div class="rhead">${esc(data.title)}の鑑定</div>
           ${tarotMarquee(cards)}
           <div class="scroll-wrap">
-            <div class="scroll-paper"><div class="scroll-grain" aria-hidden="true"></div><div class="scroll-stain" aria-hidden="true"></div><div class="rbody scroll-text">${formatReading(data.reading)}</div></div>
-            <div class="scroll-lead" aria-hidden="true"></div>
+            <div class="scroll-paper"><div class="rbody scroll-text">${formatReading(data.reading)}</div></div>
           </div>
           <div class="disc">${esc(data.disclaimer)}</div>
           ${fbBlock(data.readingId)}
