@@ -125,6 +125,9 @@
     }
   }
   function clearQuick() { quick.innerHTML = ''; }
+  // テキスト入力が必要なときだけ入力欄を表示する
+  function showInput(on) { form.classList.toggle('no-input', !on); }
+  form.classList.add('no-input');
 
   // ---------- 会話フロー ----------
   async function start() {
@@ -147,7 +150,7 @@
   }
 
   function showPicker() {
-    state.stage = 'picking'; clearQuick();
+    state.stage = 'picking'; clearQuick(); showInput(false);
     const wrap = document.createElement('div');
     wrap.className = 'msg bot';
     const cards = DIVS.map((d) =>
@@ -177,7 +180,7 @@
 
     if (f.type === 'select' && f.options.some((o) => o.desc)) {
       // 説明つきの選択肢（スプレッドなど）はカード形式で提示
-      input.disabled = true; input.placeholder = '下から選んでください'; clearQuick();
+      input.disabled = true; input.placeholder = '下から選んでください'; clearQuick(); showInput(false);
       const wrap = document.createElement('div');
       wrap.className = 'msg bot';
       const opts = f.options.map((o) =>
@@ -195,14 +198,14 @@
         answerField(b.dataset.value, b.dataset.label);
       });
     } else if (f.type === 'select') {
-      input.disabled = true; input.placeholder = '下から選んでください';
+      input.disabled = true; input.placeholder = '下から選んでください'; showInput(false);
       const chips = f.options.map((o) => ({
         label: o.label, onClick: () => { input.disabled = false; input.placeholder = 'メッセージを入力…'; answerField(o.value, o.label); },
       }));
       if (!f.required) chips.push({ label: 'スキップ', ghost: true, onClick: () => { input.disabled = false; input.placeholder = 'メッセージを入力…'; answerField('', 'スキップ'); } });
       setQuick(chips);
     } else {
-      input.disabled = false; input.placeholder = f.help ? f.help.replace(/^例）/, '例: ') : 'メッセージを入力…';
+      input.disabled = false; input.placeholder = f.help ? f.help.replace(/^例）/, '例: ') : 'メッセージを入力…'; showInput(true);
       if (!f.required) {
         setQuick([{ label: '不明 / スキップ', ghost: true, onClick: () => answerField('不明', '不明') }]);
       } else clearQuick();
@@ -238,7 +241,7 @@
     // タロットは演出（シャッフル→配布→めくり）を挟む
     if (state.div && state.div.key === 'tarot') return runTarotReading();
     state.stage = 'reading';
-    input.disabled = true; input.placeholder = '鑑定中…'; clearQuick();
+    input.disabled = true; input.placeholder = '鑑定中…'; clearQuick(); showInput(false);
     const t = typing();
     await botSay('', 0).then((m) => m.remove()).catch(() => {});
     try {
@@ -290,7 +293,7 @@
 
   async function runTarotReading() {
     state.stage = 'reading';
-    input.disabled = true; input.placeholder = '鑑定中…'; clearQuick();
+    input.disabled = true; input.placeholder = '鑑定中…'; clearQuick(); showInput(false);
     const spreadKey = state.answers.spread || 'one';
     const count = SPREAD_COUNT[spreadKey] || 1;
 
@@ -393,7 +396,7 @@
 
   async function goCheckout() {
     state.stage = 'reading';
-    input.disabled = true; clearQuick();
+    input.disabled = true; clearQuick(); showInput(false);
     const price = state.div.price;
     await botSay(`総合鑑定は <b>¥${price.toLocaleString()}</b> の有料鑑定です。<br>お支払いページ（Stripe）に移動します…`, 500);
     const t = typing();
@@ -436,32 +439,73 @@
     offerRestart();
   }
 
+  const fbBlock = (rid) => rid ? `<div class="fb" data-rid="${esc(rid)}">
+    <span class="fb-q">この鑑定はしっくりきましたか？</span>
+    <button class="fb-btn" data-v="1">当たっている</button>
+    <button class="fb-btn" data-v="0">ちがう</button>
+  </div>` : '';
+
+  // タロット1枚ぶんのタイル（画像＋暗幕＋テキスト。画像が無ければSVG絵柄）
+  function tarotTile(c) {
+    const id = cardImgId(c);
+    const rev = c.orientation === '逆位置';
+    const art = (window.SVTarotArt && SVTarotArt.cardArt) ? SVTarotArt.cardArt(c) : '';
+    const kw = Array.isArray(c.keywords) ? esc(c.keywords.join('・')) : '';
+    const img = id ? `<img class="tcard-img${rev ? ' rev' : ''}" src="/cards/${id}.webp" alt="">` : '';
+    return `<div class="tcard"><div class="tcard-art${rev ? ' rev' : ''}">${art}</div>${img}<div class="tcard-ov"></div>
+      <div class="tcard-body"><div class="pos">${esc(c.position)}</div><div class="nm">${esc(c.name)}</div>
+      <div class="or ${rev ? 'rev' : ''}">${esc(c.orientation)}</div><div class="kw">${kw}</div></div></div>`;
+  }
+
+  // 全幅で左へ流れループするカード列
+  function tarotMarquee(cards) {
+    if (!cards.length) return '';
+    const tiles = cards.map(tarotTile);
+    const tileW = 188; // タイル幅＋間隔の目安
+    const vw = window.innerWidth || 1200;
+    const reps = Math.max(1, Math.ceil((vw * 1.15) / (cards.length * tileW)));
+    const oneSet = Array.from({ length: reps }, () => tiles.join('')).join('');
+    const copyW = cards.length * reps * tileW;
+    const dur = Math.max(20, Math.round(copyW / 42)); // 約42px/秒
+    return `<div class="card-marquee"><div class="cm-track" style="animation-duration:${dur}s">${oneSet}${oneSet}</div></div>`;
+  }
+
   function renderResult(data) {
-    const panel = renderData(data);
     const isTarot = data.divination === 'tarot';
     const wrap = document.createElement('div');
-    wrap.className = 'msg bot';
-    const readingBlock = isTarot
-      ? `<div class="scroll-wrap"><div class="scroll-paper"><div class="scroll-grain" aria-hidden="true"></div><div class="rbody scroll-text">${formatReading(data.reading)}</div></div><div class="scroll-roll l" aria-hidden="true"></div><div class="scroll-roll r" aria-hidden="true"></div></div>`
-      : `<div class="rbody">${formatReading(data.reading)}</div>`;
-    wrap.innerHTML = `<div class="avatar">${SIGIL}</div><div class="bubble" style="width:100%;padding:0;background:transparent;border:none;box-shadow:none">
-      <div class="result${isTarot ? ' tarot-result' : ''}">
-        <div class="rhead">${esc(data.title)}の鑑定</div>
-        ${panel}
-        ${readingBlock}
-        <div class="disc">${esc(data.disclaimer)}</div>
-        ${data.readingId ? `<div class="fb" data-rid="${esc(data.readingId)}">
-          <span class="fb-q">この鑑定はしっくりきましたか？</span>
-          <button class="fb-btn" data-v="1">当たっている</button>
-          <button class="fb-btn" data-v="0">ちがう</button>
-        </div>` : ''}
-      </div></div>`;
+    if (isTarot) {
+      const cards = (data.data && data.data.cards) || [];
+      wrap.className = 'msg bot stagemsg';
+      wrap.innerHTML = `<div class="bubble" style="width:100%;padding:0;background:transparent;border:none;box-shadow:none">
+        <div class="result tarot-result">
+          <div class="rhead">${esc(data.title)}の鑑定</div>
+          ${tarotMarquee(cards)}
+          <div class="scroll-wrap">
+            <div class="scroll-paper"><div class="scroll-grain" aria-hidden="true"></div><div class="scroll-stain" aria-hidden="true"></div><div class="rbody scroll-text">${formatReading(data.reading)}</div></div>
+            <div class="scroll-lead" aria-hidden="true"></div>
+          </div>
+          <div class="disc">${esc(data.disclaimer)}</div>
+          ${fbBlock(data.readingId)}
+        </div></div>`;
+    } else {
+      wrap.className = 'msg bot';
+      wrap.innerHTML = `<div class="avatar">${SIGIL}</div><div class="bubble" style="width:100%;padding:0;background:transparent;border:none;box-shadow:none">
+        <div class="result">
+          <div class="rhead">${esc(data.title)}の鑑定</div>
+          ${renderData(data)}
+          <div class="rbody">${formatReading(data.reading)}</div>
+          <div class="disc">${esc(data.disclaimer)}</div>
+          ${fbBlock(data.readingId)}
+        </div></div>`;
+    }
     chat.appendChild(wrap); scroll();
     const fb = wrap.querySelector('.fb');
     if (fb) wireFeedback(fb);
+    // 画像の無い札はSVG絵柄にフォールバック
+    wrap.querySelectorAll('.tcard-img').forEach((im) => im.addEventListener('error', () => im.remove()));
     // 古代紙の本文を1文字ずつ、ランダムな順に約2秒かけて炙り出す
     const scrollText = wrap.querySelector('.scroll-text');
-    if (scrollText && !reduceMotion) scorchReveal(scrollText, 2500, 2000);
+    if (scrollText && !reduceMotion) scorchReveal(scrollText, 2900, 2000);
   }
 
   // テキストを1文字ずつ span 化し、ランダムな遅延で浮かび上がらせる
@@ -666,7 +710,7 @@
   }
 
   function offerRestart() {
-    state.stage = 'done'; input.disabled = true; input.placeholder = 'もう一度占う場合は下のボタンから';
+    state.stage = 'done'; input.disabled = true; showInput(false);
     setQuick([{ label: 'もう一度占う', onClick: () => { clearQuick(); showPicker(); } }]);
   }
 

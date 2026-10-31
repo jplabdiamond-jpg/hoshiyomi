@@ -28,7 +28,7 @@ body{
   background:radial-gradient(130% 100% at 50% 40%, transparent 55%, rgba(0,0,0,.45) 100%)}
 
 /* ヘッダー */
-.app-header{position:relative;z-index:3;max-width:760px;margin:0 auto;width:100%;padding:22px 22px 6px}
+.app-header{position:relative;z-index:3;max-width:760px;margin:0 auto;width:100%;padding:10px 22px 4px}
 .brand{display:flex;align-items:center;gap:15px}
 .sigil{flex:0 0 50px;width:50px;height:50px;color:var(--gold);filter:drop-shadow(0 0 14px rgba(227,200,141,.22))}
 .sigil svg{width:100%;height:100%}
@@ -36,13 +36,13 @@ body{
 .wordmark h1 span{display:inline-block;margin-left:.5em;color:var(--gold);font-style:italic;font-weight:500}
 .wordmark p{color:var(--muted);font-size:12.5px;margin-top:5px;letter-spacing:.02em}
 .wordmark p em{color:var(--gold-deep);font-style:normal}
-.rule{display:flex;align-items:center;gap:12px;margin:14px 2px 0;opacity:.8}
+.rule{display:flex;align-items:center;gap:12px;margin:7px 2px 0;opacity:.8}
 .rule span{height:1px;flex:1;background:linear-gradient(90deg,transparent,var(--line),transparent)}
 .rule i{color:var(--gold-deep);font-size:11px;font-style:normal}
 
 /* チャット */
 .chat{position:relative;z-index:3;flex:1;overflow-y:auto;max-width:760px;margin:0 auto;width:100%;
-  padding:18px 16px 10px;display:flex;flex-direction:column;gap:16px;scroll-behavior:smooth}
+  padding:10px 16px 10px;display:flex;flex-direction:column;gap:16px;scroll-behavior:smooth}
 .chat::-webkit-scrollbar{width:6px}
 .chat::-webkit-scrollbar-thumb{background:rgba(201,168,106,.25);border-radius:10px}
 
@@ -178,10 +178,14 @@ body{
 #send:hover{filter:brightness(1.08)}
 #send:disabled{opacity:.45;cursor:not-allowed}
 .foot{text-align:center;color:var(--faint);font-size:11px;margin-top:9px;letter-spacing:.02em}
+/* 入力が不要なときは入力欄を隠し、クイックボタンのみ表示 */
+.composer.no-input .composer-row{display:none}
+.composer.no-input .foot{margin-top:2px}
+.composer.no-input .quick{margin-bottom:4px}
 
 @media(max-width:600px){
   .wordmark h1{font-size:25px}.bubble{font-size:14.5px}.pillars{gap:5px}.pillar .kanshi{font-size:19px}
-  .app-header{padding:18px 18px 4px}
+  .app-header{padding:9px 18px 3px}
 }
 
 /* ===== タロット演出（シャッフル→配布→フリップ・ファンタジー） ===== */
@@ -343,33 +347,55 @@ body{
 /* ===== タロット鑑定結果：フェードイン＋古代紙の炙り出し ===== */
 /* タイトル「タロットの鑑定」を約2秒かけてフェードイン */
 .tarot-result > .rhead{opacity:0;animation:trFade 2s ease .15s forwards}
-.tarot-result > .rbody{opacity:0;animation:trFade 1s ease .5s forwards}
-.tarot-result > .disc,.tarot-result > .fb{opacity:0;animation:trFade .9s ease 5s forwards}
+.tarot-result > .rbody,.tarot-result > .card-marquee{opacity:0;animation:trFade 1s ease .5s forwards}
+.tarot-result > .disc,.tarot-result > .fb{opacity:0;animation:trFade .9s ease 5.6s forwards}
 @keyframes trFade{from{opacity:0}to{opacity:1}}
 
-/* 古代紙（両サイドが巻物のように丸まった状態） */
-.scroll-wrap{position:relative;margin:8px 20px 18px}
-.scroll-paper{position:relative;margin:0 20px;border-radius:3px;padding:22px 26px;overflow:hidden;
-  color:#4a3721;border:1px solid rgba(120,86,40,.4);border-left:none;border-right:none;
-  background:radial-gradient(130% 90% at 50% -4%,#f1e6ca,#e7d8b2 46%,#dcc8a0 100%);
-  box-shadow:0 12px 34px rgba(0,0,0,.55),inset 0 0 44px rgba(120,86,40,.28);
-  clip-path:inset(0 0 100% 0);animation:trUnroll 1s cubic-bezier(.3,.8,.3,1) 1.9s forwards}
-.scroll-paper::before,.scroll-paper::after{content:"";position:absolute;left:0;right:0;height:14px;pointer-events:none;z-index:2}
-.scroll-paper::before{top:0;background:linear-gradient(180deg,rgba(120,86,40,.26),transparent)}
-.scroll-paper::after{bottom:0;background:linear-gradient(0deg,rgba(120,86,40,.26),transparent)}
-.scroll-grain{position:absolute;inset:0;z-index:0;pointer-events:none;opacity:.5;mix-blend-mode:multiply;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E")}
-@keyframes trUnroll{0%{clip-path:inset(0 0 100% 0)}100%{clip-path:inset(0 0 0% 0)}}
-/* 左右の巻きロール */
-.scroll-roll{position:absolute;top:-7px;bottom:-7px;width:38px;z-index:4;pointer-events:none;border-radius:9px;
-  background:linear-gradient(90deg,#9c7d4c 0%,#c7ab7a 16%,#f3e9d0 42%,#efe2c2 56%,#cdb184 80%,#8f7042 100%);
-  box-shadow:0 10px 26px rgba(0,0,0,.5),inset 0 2px 3px rgba(255,248,224,.6),inset 0 -2px 4px rgba(90,64,30,.55)}
-.scroll-roll::before{content:"";position:absolute;top:6px;bottom:6px;width:7px;border-radius:50%;
-  background:linear-gradient(90deg,rgba(90,64,30,.55),rgba(255,248,224,.5));opacity:.8}
-.scroll-roll.l{left:-6px}
-.scroll-roll.l::before{right:3px}
-.scroll-roll.r{right:-6px}
-.scroll-roll.r::before{left:3px;background:linear-gradient(270deg,rgba(90,64,30,.55),rgba(255,248,224,.5))}
+/* タロット結果：全幅ループのカード列 */
+.tarot-result{background:none!important;border:none!important;box-shadow:none!important;overflow:visible;backdrop-filter:none}
+.tarot-result > .rhead,.tarot-result > .scroll-wrap,.tarot-result > .disc,.tarot-result > .fb{max-width:720px;margin-left:auto;margin-right:auto}
+.tarot-result > .rhead{border-radius:4px}
+.card-marquee{position:relative;left:50%;width:100vw;margin-left:-50vw;overflow:hidden;padding:10px 0 12px}
+.cm-track{display:flex;gap:16px;width:max-content;will-change:transform;animation:cmSlide linear infinite}
+@keyframes cmSlide{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.card-marquee .tcard{flex:0 0 172px;width:172px;margin:0}
+
+/* 古代紙：左から巻物が広がる（最後は広げ切った平らな状態） */
+.scroll-wrap{position:relative;margin:8px 0 18px;padding:0 4px}
+.scroll-paper{position:relative;border-radius:3px;padding:24px 28px;overflow:hidden;color:#4a3721;
+  border:1px solid rgba(120,86,40,.4);
+  background:
+    radial-gradient(42% 30% at 12% 18%,rgba(150,108,55,.22),transparent 60%),
+    radial-gradient(38% 26% at 86% 72%,rgba(118,82,42,.26),transparent 58%),
+    radial-gradient(30% 40% at 68% 10%,rgba(160,120,68,.16),transparent 62%),
+    radial-gradient(34% 30% at 28% 88%,rgba(110,76,38,.2),transparent 60%),
+    radial-gradient(130% 95% at 50% -6%,#f0e4c6,#e5d5ae 46%,#d7c296 100%);
+  box-shadow:0 14px 36px rgba(0,0,0,.55),inset 0 0 46px rgba(120,86,40,.4),inset 0 0 120px rgba(80,54,22,.3);
+  clip-path:inset(0 100% 0 0);transform-origin:left center;
+  animation:trUnroll 1.3s cubic-bezier(.3,.8,.3,1) 1.6s forwards}
+/* 端の擦れ・傷み */
+.scroll-paper::before{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;border-radius:3px;
+  box-shadow:inset 0 0 0 1px rgba(90,60,25,.25),inset 0 0 22px rgba(70,46,18,.45);
+  background:
+    linear-gradient(90deg,rgba(70,46,18,.3),transparent 7%,transparent 93%,rgba(70,46,18,.3)),
+    linear-gradient(0deg,rgba(70,46,18,.28),transparent 6%,transparent 94%,rgba(70,46,18,.28))}
+.scroll-paper::after{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;mix-blend-mode:multiply;opacity:.5;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='140'%3E%3Cg stroke='%235a3c16' stroke-width='0.6' fill='none' opacity='0.5'%3E%3Cpath d='M4 10 q6 4 2 22 M296 24 q-7 5 -3 26 M10 130 q5 -6 1 -24 M290 118 q-6 -5 -2 -22'/%3E%3C/g%3E%3C/svg%3E");background-repeat:no-repeat;background-size:100% 100%}
+.scroll-grain{position:absolute;inset:0;z-index:0;pointer-events:none;opacity:.65;mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E")}
+.scroll-stain{position:absolute;inset:0;z-index:0;pointer-events:none;opacity:.5;mix-blend-mode:multiply;
+  background:
+    radial-gradient(16px 10px at 22% 40%,rgba(90,58,24,.4),transparent 70%),
+    radial-gradient(22px 14px at 74% 30%,rgba(100,66,30,.34),transparent 72%),
+    radial-gradient(12px 9px at 58% 76%,rgba(80,50,20,.4),transparent 70%),
+    radial-gradient(18px 11px at 40% 62%,rgba(96,62,28,.3),transparent 72%)}
+@keyframes trUnroll{0%{clip-path:inset(0 100% 0 0)}100%{clip-path:inset(0 0 0 0)}}
+/* 展開時に先頭を転がる巻きロール（開き切ると消える） */
+.scroll-lead{position:absolute;top:-7px;bottom:-7px;left:0;width:34px;z-index:5;pointer-events:none;border-radius:8px;opacity:0;transform:translateX(-50%);
+  background:linear-gradient(90deg,#8f7042 0%,#c7ab7a 18%,#f3e9d0 44%,#e9dcbe 58%,#c3a675 82%,#856838 100%);
+  box-shadow:0 10px 26px rgba(0,0,0,.5),inset 0 2px 3px rgba(255,248,224,.6),inset 0 -2px 4px rgba(90,64,30,.55);
+  animation:trLead 1.3s cubic-bezier(.3,.8,.3,1) 1.6s forwards}
+@keyframes trLead{0%{left:0;opacity:1}88%{opacity:1}100%{left:100%;opacity:0}}
 
 /* 炙り出し：1文字ずつランダムに浮かび上がる */
 .scroll-text{position:relative;z-index:1;font-size:15.5px;color:#48331d;line-height:1.95;letter-spacing:.01em;
