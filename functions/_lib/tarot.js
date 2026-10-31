@@ -137,6 +137,7 @@ export function drawTarot(spreadKey = 'one', question = '') {
       name: card.name,
       en: card.en,
       arcana: card.arcana,
+      number: card.number, // 大アルカナ=0〜21 / 小アルカナ=ランク1〜14
       suit: card.suit || null,
       element: card.element || null,
       orientation: reversed ? '逆位置' : '正位置',

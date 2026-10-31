@@ -29,9 +29,13 @@
     const sub = c.arcana === '大アルカナ'
       ? (typeof c.number === 'number' && ROMAN[c.number] ? `大アルカナ · ${ROMAN[c.number]}` : '大アルカナ')
       : `${esc(c.suit || '')}${c.element ? ' · ' + esc(c.element) : ''}`;
+    const kw = Array.isArray(c.keywords) && c.keywords.length ? esc(c.keywords.slice(0, 2).join('・')) : '';
+    const art = (window.SVTarotArt && SVTarotArt.cardArt) ? SVTarotArt.cardArt(c) : '';
     return `<div class="tz-face tz-front${rev ? ' is-rev' : ''}">
       <div class="ar">${sub}</div>
-      <div class="ctr"><div class="nm">${esc(c.name)}</div><div class="en">${esc(c.en || '')}</div></div>
+      <div class="tz-art">${art}</div>
+      <div class="nm">${esc(c.name)}</div>
+      ${kw ? `<div class="kw">${kw}</div>` : ''}
       <div class="mo ${rev ? 'rev' : 'up'}">${rev ? '逆位置' : '正位置'}</div>
     </div>`;
   }
@@ -225,20 +229,33 @@
   const SPREAD_COUNT = { one: 1, three: 3, celtic: 10 };
   const reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+  const MAGIC_CIRCLE = `<svg viewBox="0 0 200 200" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="100" cy="100" r="94" stroke-width="0.8" opacity=".5"/>
+    <circle cx="100" cy="100" r="82" stroke-width="0.6" opacity=".35"/>
+    <circle cx="100" cy="100" r="60" stroke-width="0.8" opacity=".6"/>
+    <g opacity=".7">${Array.from({ length: 24 }, (_, i) => { const a = i * 15 * Math.PI / 180; const x1 = 100 + 82 * Math.cos(a), y1 = 100 + 82 * Math.sin(a), x2 = 100 + 94 * Math.cos(a), y2 = 100 + 94 * Math.sin(a); return `<path d="M${x1.toFixed(1)} ${y1.toFixed(1)}L${x2.toFixed(1)} ${y2.toFixed(1)}" stroke-width="0.7"/>`; }).join('')}</g>
+    <path d="${(() => { let d = ''; for (let i = 0; i < 7; i++) { const a = (-90 + i * 360 * 3 / 7) * Math.PI / 180; const x = 100 + 60 * Math.cos(a), y = 100 + 60 * Math.sin(a); d += (i ? 'L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1); } return d + 'Z'; })()}" stroke-width="0.8" opacity=".8"/>
+    <circle cx="100" cy="100" r="30" stroke-width="0.6" opacity=".5"/>
+  </svg>`;
+
   async function runTarotReading() {
     state.stage = 'reading';
     input.disabled = true; input.placeholder = '鑑定中…'; clearQuick();
     const spreadKey = state.answers.spread || 'one';
     const count = SPREAD_COUNT[spreadKey] || 1;
 
-    // ステージ（束）をチャットに出す
     const wrap = document.createElement('div');
     wrap.className = 'msg bot';
     const backs = Array.from({ length: 6 }, (_, i) => `<div class="tz d${i}">${cardBackHTML()}</div>`).join('');
+    const motes = Array.from({ length: 16 }, () => {
+      const x = (Math.random() * 100).toFixed(1), d = (Math.random() * 5).toFixed(2), dur = (4 + Math.random() * 4).toFixed(2), sc = (0.5 + Math.random()).toFixed(2);
+      return `<i style="left:${x}%;--d:${d}s;--dur:${dur}s;--sc:${sc}"></i>`;
+    }).join('');
     wrap.innerHTML = `<div class="avatar">${SIGIL}</div>
       <div class="bubble" style="width:100%;padding:0;background:transparent;border:none;box-shadow:none">
         <div class="tarot-stage">
-          <div class="ts-caption">カードをシャッフルしています…</div>
+          <div class="ts-fx" aria-hidden="true"><div class="ts-circle">${MAGIC_CIRCLE}</div><div class="ts-motes">${motes}</div></div>
+          <div class="ts-caption">星に問いを預けています…</div>
           <div class="ts-deck">${backs}</div>
           <div class="ts-spread" data-count="${count}" hidden></div>
         </div></div>`;
@@ -247,36 +264,42 @@
     const caption = stage.querySelector('.ts-caption');
     const deck = stage.querySelector('.ts-deck');
     const spread = stage.querySelector('.ts-spread');
+    const setCap = (t) => { caption.classList.add('swap'); setTimeout(() => { caption.textContent = t; caption.classList.remove('swap'); }, 220); };
 
-    // 鑑定取得は演出と並行して走らせる
+    // 鑑定取得は演出と並行
     const fetchP = fetch('/api/reading', {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ divination: 'tarot', answers: state.answers, anonId }),
     }).then((r) => r.json().then((d) => ({ ok: r.ok, data: d })))
       .catch(() => ({ ok: false, data: { error: '通信に失敗しました' } }));
 
-    // シャッフル
+    // シャッフル（結果が来るまで“止まらず”回し続ける）
+    let data, ok;
     if (!reduceMotion) {
       deck.classList.add('shuffling');
-      await wait(3800);
+      await wait(900);
+      setCap('カードをきり、束ねています…');
+      // 最低演出時間と取得完了の両方を待つ＝待機中も常に動く
+      const res = (await Promise.all([fetchP, wait(2600)]))[0];
+      ok = res.ok; data = res.data;
       deck.classList.remove('shuffling');
       deck.classList.add('gather');
-      await wait(450);
-    } else { await wait(200); }
+      await wait(480);
+    } else {
+      const res = await fetchP; ok = res.ok; data = res.data; await wait(150);
+    }
 
-    // 結果を待つ
-    const { ok, data } = await fetchP;
-    if (!ok || data.error) {
+    if (!ok || !data || data.error) {
       stage.remove();
       await botSay(`うまく鑑定できませんでした。${esc((data && data.error) || '')}<br>もう一度お試しください。`);
       offerRestart(); return;
     }
     const cards = (data.data && data.data.cards) || [];
 
-    // 束を引っ込めてスロットを配る
-    caption.textContent = 'カードを引いています…';
+    // 束を舞い上げて消し、スロットを配る
+    setCap('運命のカードを選び取ります…');
     deck.classList.add('out');
-    await wait(reduceMotion ? 0 : 420);
+    await wait(reduceMotion ? 0 : 520);
     deck.hidden = true;
     spread.hidden = false;
     spread.innerHTML = cards.map((c) =>
@@ -284,25 +307,24 @@
     ).join('');
     scroll();
     const slots = [...spread.querySelectorAll('.ts-slot')];
-    // 配布（面を伏せたまま出現）
     for (let i = 0; i < slots.length; i++) {
       slots[i].classList.add('deal');
-      if (!reduceMotion) await wait(count > 3 ? 70 : 130);
+      if (!reduceMotion) await wait(count > 3 ? 85 : 150);
     }
-    await wait(reduceMotion ? 0 : 450);
+    await wait(reduceMotion ? 0 : 520);
 
-    // 1枚ずつめくる（ガチャ）
-    caption.textContent = 'カードが開かれます';
+    // 1枚ずつ、光とともにめくる（ガチャ）
+    setCap('✦ カードが開かれます ✦');
     for (let i = 0; i < slots.length; i++) {
       slots[i].classList.add('revealed', 'pop');
       scroll();
-      if (!reduceMotion) await wait(count > 3 ? 360 : 620);
+      if (!reduceMotion) await wait(count > 3 ? 400 : 680);
     }
-    await wait(reduceMotion ? 0 : 500);
+    await wait(reduceMotion ? 0 : 560);
+    stage.classList.add('settled'); // エフェクトを静める
     caption.classList.add('hide');
 
-    // 詳しい鑑定パネルを表示
-    await wait(reduceMotion ? 0 : 400);
+    await wait(reduceMotion ? 0 : 420);
     renderResult(data);
     offerRestart();
   }

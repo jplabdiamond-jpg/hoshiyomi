@@ -1,7 +1,7 @@
 // POST /api/reading
 // body: { divination: 'astrology'|'fourpillars'|'tarot', answers: {...} }
 // → 確定計算 + Cloudflare Workers AI による鑑定文を返す
-import { computeDivination, buildMessages, DISCLAIMER } from '../_lib/reading.js';
+import { computeDivination, buildMessages, cleanReading, DISCLAIMER } from '../_lib/reading.js';
 import { ensureSchema } from '../_lib/db.js';
 import { getCheckoutSession } from '../_lib/stripe.js';
 
@@ -72,7 +72,7 @@ export async function onRequestPost(context) {
         frequency_penalty: 0.5, // 同じ語の繰り返しを抑制
         presence_penalty: 0.3,  // 話題の広がりを促す
       });
-      reading = (resp && (resp.response || resp.result || '')).trim();
+      reading = cleanReading(divination, (resp && (resp.response || resp.result || '')).trim());
     } catch (e) {
       aiError = String(e.message || e);
     }

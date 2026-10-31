@@ -178,11 +178,12 @@ export function buildMessages(key, computed, answers) {
       '全体で1000〜1200字程度。「身強／身弱」「大運」「流年」などの用語はその場で意味を説明すること。データにない年や出来事を創作しないこと。';
   } else if (key === 'tarot') {
     instruction =
-      'タロットの鑑定文を作ってください。次の見出しで構成します。\n' +
-      '■ カード全体が伝えていること\n' +
-      '■ 各ポジションのカードの意味（正位置・逆位置を、相談内容に引きつけて噛み砕く）\n' +
-      '■ これからどうすると良いか（最重要・厚めに）… 相談内容に対して、今日から取れる具体的な一歩を複数、場面つきで提案する\n' +
-      '全体で700〜900字程度。カード名の専門的な含意は日常語で説明すること。';
+      'タロットの鑑定文を、やさしく短めに作ってください。次の2つの見出しだけで構成します（見出しは■も含めてこの文言を一字一句そのまま使う）。\n' +
+      '■ カードが教えてくれること\n' +
+      '（引いたカード全体と各ポジションの流れを、相談内容に引きつけて2〜4文で。カード名は「愚者」「恋人」「運命の輪」のように日本語の通称で呼び、正位置・逆位置のニュアンスも一言添える。専門用語は避ける）\n' +
+      '■ これから意識するとよいこと\n' +
+      '（相談内容に対して、今日から取れる具体的な一歩を2つほど、場面つきで）\n' +
+      '全体で350〜450字程度。簡潔に、温かく、断定しすぎないこと。';
   } else if (key === 'seimei') {
     instruction =
       '姓名判断の鑑定文を作ってください。次の見出しで構成します。\n' +
@@ -225,6 +226,50 @@ export function buildMessages(key, computed, answers) {
     { role: 'system', content: common },
     { role: 'user', content: user },
   ];
+}
+
+// 期待される見出し（LLMが稀に漢字を誤変換・欠落させるため、近い見出し行を正規に補正）
+const EXPECTED_HEADINGS = {
+  astrology: ['あなたという人', '強みと、少し気をつけたいところ', 'この先の見通しと転機', 'その時期をどう活かすか'],
+  fourpillars: ['あなたの核', '持ち味と活かし方', 'これからの運気の流れと転機', 'その時期をどう活かすか'],
+  tarot: ['カードが教えてくれること', 'これから意識するとよいこと'],
+  seimei: ['名前が示すあなた', '強みと気をつけたい面', 'これからどう活かすか'],
+  numerology: ['あなたの本質', '持ち味と人生のテーマ', 'これからどう活かすか'],
+  comprehensive: ['総合的に見たあなた', '相談テーマへの見立て', 'これからの見通しと転機', '分野別のリスクと対策', '推奨行動とラッキー方位'],
+};
+
+function bigrams(s) {
+  const a = new Set();
+  for (let i = 0; i < s.length - 1; i++) a.add(s.slice(i, i + 2));
+  return a;
+}
+function dice(a, b) {
+  if (!a.length || !b.length) return 0;
+  const A = bigrams(a), B = bigrams(b);
+  if (!A.size || !B.size) return a === b ? 1 : 0;
+  let inter = 0;
+  for (const g of A) if (B.has(g)) inter++;
+  return (2 * inter) / (A.size + B.size);
+}
+
+// 鑑定文の軽い後処理：見出し行を期待見出しにスナップし、他言語文字を除去
+export function cleanReading(key, text) {
+  if (!text) return text;
+  const base = key === 'comprehensive_plus' ? 'comprehensive' : key;
+  const heads = EXPECTED_HEADINGS[base] || [];
+  const lines = text.replace(/\r/g, '').split('\n').map((line) => {
+    // ハングル・キリル等の明らかな他言語文字を除去（日本語・英数・記号は保持）
+    let l = line.replace(/[가-힣Ѐ-ӿ฀-๿]/g, '');
+    const m = l.match(/^\s*[■●▪・]+\s*(.+?)\s*$/);
+    if (m && heads.length) {
+      const body = m[1].replace(/[（(].*$/, '').trim();
+      let best = '', score = 0;
+      for (const h of heads) { const s = dice(body, h); if (s > score) { score = s; best = h; } }
+      if (score >= 0.5) return '■ ' + best;
+    }
+    return l;
+  });
+  return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
 }
 
 export const DISCLAIMER =
