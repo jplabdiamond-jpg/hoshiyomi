@@ -20,6 +20,13 @@
   </svg>`;
 
   const ROMAN = ['0','I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XIII','XIV','XV','XVI','XVII','XVIII','XIX','XX','XXI'];
+  const SUIT_KEY = { 'ワンド': 'wands', 'カップ': 'cups', 'ソード': 'swords', 'ペンタクル': 'pentacles' };
+  // カードごとの画像ID（/cards/<id>.webp）。大=major-0〜21 / 小=<suit>-<rank-1>
+  function cardImgId(c) {
+    if (c.arcana === '大アルカナ') return typeof c.number === 'number' ? 'major-' + c.number : null;
+    const k = SUIT_KEY[c.suit];
+    return (k && typeof c.number === 'number') ? k + '-' + (c.number - 1) : null;
+  }
 
   function cardBackHTML() {
     return `<div class="tz-face tz-back">${TAROT_BACK}<div class="corners"><i></i><i></i><i></i><i></i></div></div>`;
@@ -31,12 +38,17 @@
       : `${esc(c.suit || '')}${c.element ? ' · ' + esc(c.element) : ''}`;
     const kw = Array.isArray(c.keywords) && c.keywords.length ? esc(c.keywords.slice(0, 2).join('・')) : '';
     const art = (window.SVTarotArt && SVTarotArt.cardArt) ? SVTarotArt.cardArt(c) : '';
-    return `<div class="tz-face tz-front${rev ? ' is-rev' : ''}">
-      <div class="ar">${sub}</div>
-      <div class="tz-art">${art}</div>
-      <div class="nm">${esc(c.name)}</div>
-      ${kw ? `<div class="kw">${kw}</div>` : ''}
-      <div class="mo ${rev ? 'rev' : 'up'}">${rev ? '逆位置' : '正位置'}</div>
+    const id = cardImgId(c);
+    const img = id ? `<img class="tz-img" src="/cards/${id}.webp" alt="${esc(c.name)}">` : '';
+    return `<div class="tz-face tz-front${rev ? ' is-rev' : ''}${img ? ' hasimg' : ''}">
+      ${img}
+      <div class="tz-svg">
+        <div class="ar">${sub}</div>
+        <div class="tz-art">${art}</div>
+        <div class="nm">${esc(c.name)}</div>
+        ${kw ? `<div class="kw">${kw}</div>` : ''}
+        <div class="mo ${rev ? 'rev' : 'up'}">${rev ? '逆位置' : '正位置'}</div>
+      </div>
     </div>`;
   }
   function flipCardHTML(c) {
@@ -305,6 +317,14 @@
     spread.innerHTML = cards.map((c) =>
       `<div class="ts-slot">${flipCardHTML(c)}<div class="ps">${esc(c.position)}</div></div>`
     ).join('');
+    // 画像が無い札（未提供スート等）はSVG絵柄にフォールバック
+    spread.querySelectorAll('.tz-img').forEach((im) => {
+      im.addEventListener('error', () => {
+        const face = im.closest('.tz-front');
+        if (face) face.classList.remove('hasimg');
+        im.remove();
+      });
+    });
     scroll();
     const slots = [...spread.querySelectorAll('.ts-slot')];
     for (let i = 0; i < slots.length; i++) {
