@@ -76,6 +76,8 @@ body{
 .pick span{display:block}
 .pick .ttl{font-family:var(--mincho);font-size:17px;font-weight:600;letter-spacing:.04em;display:block}
 .pick .tag{font-size:12px;color:var(--muted);margin-top:3px;display:block;line-height:1.55}
+.pick .ttl .price{display:inline-block;margin-left:10px;font-family:var(--serif);font-style:normal;font-size:13px;
+  color:var(--gold);border:1px solid rgba(201,168,106,.4);border-radius:2px;padding:1px 8px;vertical-align:middle}
 
 /* クイックリプライ */
 .quick{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;max-width:760px;margin-left:auto;margin-right:auto;width:100%;padding:0 2px}

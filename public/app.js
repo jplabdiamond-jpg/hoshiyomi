@@ -86,7 +86,18 @@
     try {
       const r = await fetch('/api/divinations'); DIVS = (await r.json()).divinations;
     } catch { DIVS = []; }
+    const params = new URLSearchParams(location.search);
+    const paid = params.get('paid');
+    const canceled = params.get('canceled');
+    // URLのクエリを消す（二重実行防止）
+    if (paid || canceled) history.replaceState({}, '', location.pathname);
+    if (paid) {
+      await botSay('Sibylla Vision へお帰りなさい。', 300);
+      await runPaidReading(paid);
+      return;
+    }
     await botSay('Sibylla Vision へようこそ。<br>星の配置・生まれ持った命式に、統計と風水を重ねて、これからの流れをお読みします。<br>まずは占いたいものをお選びください。', 300);
+    if (canceled) await botSay('お支払いはキャンセルされました。いつでもまたどうぞ。', 300);
     showPicker();
   }
 
@@ -96,7 +107,7 @@
     wrap.className = 'msg bot';
     const cards = DIVS.map((d) =>
       `<button class="pick" data-key="${d.key}"><span class="ic">${ICONS[d.key] || ''}</span>
-        <span><span class="ttl">${esc(d.ja)}</span><span class="tag">${esc(d.tagline)}</span></span></button>`
+        <span><span class="ttl">${esc(d.ja)}${d.price ? `<em class="price">¥${d.price.toLocaleString()}</em>` : ''}</span><span class="tag">${esc(d.tagline)}</span></span></button>`
     ).join('');
     wrap.innerHTML = `<div class="avatar">${SIGIL}</div><div class="bubble" style="width:100%"><div class="picker">${cards}</div></div>`;
     chat.appendChild(wrap); scroll();
@@ -158,6 +169,8 @@
   }
 
   async function runReading() {
+    // 有料モードは決済へ
+    if (state.div && state.div.price) return goCheckout();
     state.stage = 'reading';
     input.disabled = true; input.placeholder = '鑑定中…'; clearQuick();
     const t = typing();
@@ -177,11 +190,56 @@
     offerRestart();
   }
 
+  async function goCheckout() {
+    state.stage = 'reading';
+    input.disabled = true; clearQuick();
+    const price = state.div.price;
+    await botSay(`総合鑑定は <b>¥${price.toLocaleString()}</b> の有料鑑定です。<br>お支払いページ（Stripe）に移動します…`, 500);
+    const t = typing();
+    try {
+      const r = await fetch('/api/checkout', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ answers: state.answers, anonId }),
+      });
+      const data = await r.json();
+      t.remove();
+      if (!r.ok || !data.url) {
+        await botSay(`決済ページを開けませんでした。${esc(data.error || data.message || '')}`); offerRestart(); return;
+      }
+      sessionStorage.setItem('sv_pending', '1');
+      location.href = data.url; // Stripe Checkout へ
+    } catch {
+      t.remove(); await botSay('決済サーバーに接続できませんでした。少し時間をおいて再度お試しください。'); offerRestart();
+    }
+  }
+
+  // 決済成功後の戻り（?paid=<session>&order=...）で鑑定を実行
+  async function runPaidReading(sessionId) {
+    await botSay('お支払いありがとうございます。鑑定を進めます…🔮', 400);
+    const t = typing();
+    try {
+      const r = await fetch('/api/reading', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ divination: 'comprehensive_plus', paidSession: sessionId, anonId }),
+      });
+      const data = await r.json();
+      t.remove();
+      if (!r.ok || data.error) {
+        await botSay(`鑑定の実行でエラーが出ました。${esc(data.message || data.error || '')}<br>お手数ですがサポートへお知らせください。`);
+        offerRestart(); return;
+      }
+      renderResult(data);
+    } catch {
+      t.remove(); await botSay('鑑定の取得に失敗しました。もう一度お試しください。');
+    }
+    offerRestart();
+  }
+
   function renderResult(data) {
     const panel = renderData(data);
     const wrap = document.createElement('div');
     wrap.className = 'msg bot';
-    wrap.innerHTML = `<div class="avatar">☾</div><div class="bubble" style="width:100%;padding:0;background:transparent;border:none;box-shadow:none">
+    wrap.innerHTML = `<div class="avatar">${SIGIL}</div><div class="bubble" style="width:100%;padding:0;background:transparent;border:none;box-shadow:none">
       <div class="result">
         <div class="rhead">${esc(data.title)}の鑑定</div>
         ${panel}

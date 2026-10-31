@@ -3,6 +3,9 @@
 // → 確定計算 + Cloudflare Workers AI による鑑定文を返す
 import { computeDivination, buildMessages, DISCLAIMER } from '../_lib/reading.js';
 import { ensureSchema } from '../_lib/db.js';
+import { getCheckoutSession } from '../_lib/stripe.js';
+
+const PAID = new Set(['comprehensive_plus']); // 有料モード
 
 const DEFAULT_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
 
@@ -21,10 +24,30 @@ export async function onRequestPost(context) {
     return json({ error: 'JSONの解析に失敗しました' }, 400);
   }
 
-  const { divination, answers } = body || {};
-  if (!divination || !answers) {
-    return json({ error: 'divination と answers は必須です' }, 400);
+  let { divination, answers } = body || {};
+  if (!divination) return json({ error: 'divination は必須です' }, 400);
+
+  // 有料モードは支払い検証を通し、答えは「支払い済みの注文」から取得する（改ざん防止）
+  let paidOrder = null;
+  if (PAID.has(divination)) {
+    const sessionId = body.paidSession;
+    if (!sessionId) return json({ error: 'payment_required', message: '総合鑑定はお支払いが必要です' }, 402);
+    if (!env.STRIPE_SECRET_KEY || !env.DB) return json({ error: '決済検証が利用できません' }, 503);
+    try {
+      await ensureSchema(env.DB);
+      const row = await env.DB.prepare('SELECT * FROM orders WHERE stripe_session_id = ?').bind(sessionId).first();
+      if (!row) return json({ error: 'invalid_order', message: '注文が見つかりません' }, 400);
+      if (row.status === 'consumed') return json({ error: 'already_used', message: 'この支払いは既に鑑定に使用済みです' }, 409);
+      const session = await getCheckoutSession(env.STRIPE_SECRET_KEY, sessionId);
+      if (session.payment_status !== 'paid') return json({ error: 'not_paid', message: 'お支払いが確認できませんでした' }, 402);
+      paidOrder = row;
+      answers = JSON.parse(row.answers_json || '{}'); // 支払った内容で鑑定
+    } catch (e) {
+      return json({ error: String(e.message || e) }, 500);
+    }
   }
+
+  if (!answers) return json({ error: 'answers は必須です' }, 400);
 
   // 1) 確定計算（命式・チャート・カード）
   let computed;
@@ -78,6 +101,11 @@ export async function onRequestPost(context) {
         JSON.stringify(answers).slice(0, 4000),
         computed.material.slice(0, 4000), model
       ).run();
+      // 有料注文は「使用済み」にして二重利用を防ぐ
+      if (paidOrder) {
+        await env.DB.prepare('UPDATE orders SET status = ?, reading_id = ? WHERE id = ?')
+          .bind('consumed', readingId, paidOrder.id).run();
+      }
     } catch { readingId = null; }
   }
 
