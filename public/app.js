@@ -175,7 +175,26 @@
     if (f.help) msg += `<br><span style="color:var(--muted);font-size:13px">${esc(f.help)}</span>`;
     await botSay(msg, 450);
 
-    if (f.type === 'select') {
+    if (f.type === 'select' && f.options.some((o) => o.desc)) {
+      // 説明つきの選択肢（スプレッドなど）はカード形式で提示
+      input.disabled = true; input.placeholder = '下から選んでください'; clearQuick();
+      const wrap = document.createElement('div');
+      wrap.className = 'msg bot';
+      const opts = f.options.map((o) =>
+        `<button class="opt" data-value="${esc(o.value)}" data-label="${esc(o.label)}">
+          <span class="opt-ttl">${esc(o.label)}</span>
+          ${o.desc ? `<span class="opt-desc">${esc(o.desc)}</span>` : ''}</button>`
+      ).join('');
+      wrap.innerHTML = `<div class="avatar">${SIGIL}</div><div class="bubble" style="width:100%"><div class="optlist">${opts}</div></div>`;
+      chat.appendChild(wrap); scroll();
+      const list = wrap.querySelector('.optlist');
+      list.querySelectorAll('.opt').forEach((b) => b.onclick = () => {
+        if (list.classList.contains('chosen')) return;
+        list.classList.add('chosen'); b.classList.add('sel');
+        input.disabled = false; input.placeholder = 'メッセージを入力…';
+        answerField(b.dataset.value, b.dataset.label);
+      });
+    } else if (f.type === 'select') {
       input.disabled = true; input.placeholder = '下から選んでください';
       const chips = f.options.map((o) => ({
         label: o.label, onClick: () => { input.disabled = false; input.placeholder = 'メッセージを入力…'; answerField(o.value, o.label); },
