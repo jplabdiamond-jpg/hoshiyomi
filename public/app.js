@@ -438,13 +438,17 @@
 
   function renderResult(data) {
     const panel = renderData(data);
+    const isTarot = data.divination === 'tarot';
     const wrap = document.createElement('div');
     wrap.className = 'msg bot';
+    const readingBlock = isTarot
+      ? `<div class="scroll-paper"><div class="scroll-grain" aria-hidden="true"></div><div class="rbody scroll-text">${formatReading(data.reading)}</div></div>`
+      : `<div class="rbody">${formatReading(data.reading)}</div>`;
     wrap.innerHTML = `<div class="avatar">${SIGIL}</div><div class="bubble" style="width:100%;padding:0;background:transparent;border:none;box-shadow:none">
-      <div class="result">
+      <div class="result${isTarot ? ' tarot-result' : ''}">
         <div class="rhead">${esc(data.title)}の鑑定</div>
         ${panel}
-        <div class="rbody">${formatReading(data.reading)}</div>
+        ${readingBlock}
         <div class="disc">${esc(data.disclaimer)}</div>
         ${data.readingId ? `<div class="fb" data-rid="${esc(data.readingId)}">
           <span class="fb-q">この鑑定はしっくりきましたか？</span>
@@ -473,6 +477,7 @@
 
   function formatReading(txt) {
     return esc(txt)
+      .replace(/^[\s　]*[■◾▪◼]\s*(.+?)[\s　]*$/gm, '<h3 class="r-head">$1</h3>')
       .replace(/^[\s　]*[①-⑩0-9]+[．.、]?\s*(.+)$/gm, (m, p1) => (/[：:]/.test(m) || m.length < 30) && /^[\s　]*[①-⑩]/.test(m) ? `<h4>${p1}</h4>` : m)
       .replace(/【(.+?)】/g, '<h4>$1</h4>');
   }
