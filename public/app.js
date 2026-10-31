@@ -10,6 +10,35 @@
     numerology: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg>`,
     comprehensive_plus: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.1"><path d="M2.5 12C5.3 8.3 8.4 6.7 12 6.7S18.7 8.3 21.5 12C18.7 15.7 15.6 17.3 12 17.3S5.3 15.7 2.5 12Z"/><circle cx="12" cy="12" r="2.5"/><path d="M12 9.3l.6 2.1 2.1.6-2.1.6-.6 2.1-.6-2.1-2.1-.6 2.1-.6z" fill="currentColor" stroke="none"/></svg>`,
   };
+  // タロット裏面の紋章（太陽＋瞳＋星）
+  const TAROT_BACK = `<svg viewBox="0 0 48 60" fill="none" stroke="currentColor" stroke-width="0.9" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="24" cy="30" r="13.5" opacity=".5"/>
+    <g opacity=".85">${Array.from({length:12},(_,i)=>{const a=i*30*Math.PI/180;const x1=24+13.5*Math.cos(a),y1=30+13.5*Math.sin(a),x2=24+16.5*Math.cos(a),y2=30+16.5*Math.sin(a);return `<path d="M${x1.toFixed(1)} ${y1.toFixed(1)}L${x2.toFixed(1)} ${y2.toFixed(1)}" stroke-linecap="round"/>`}).join('')}</g>
+    <path d="M13 30C17 25.5 20.5 24 24 24C27.5 24 31 25.5 35 30C31 34.5 27.5 36 24 36C20.5 36 17 34.5 13 30Z"/>
+    <circle cx="24" cy="30" r="3.4"/>
+    <path d="M24 26.3l.8 2.9 2.9.8-2.9.8-.8 2.9-.8-2.9-2.9-.8 2.9-.8z" fill="currentColor" stroke="none"/>
+  </svg>`;
+
+  const ROMAN = ['0','I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XIII','XIV','XV','XVI','XVII','XVIII','XIX','XX','XXI'];
+
+  function cardBackHTML() {
+    return `<div class="tz-face tz-back">${TAROT_BACK}<div class="corners"><i></i><i></i><i></i><i></i></div></div>`;
+  }
+  function cardFrontHTML(c) {
+    const rev = c.orientation === '逆位置';
+    const sub = c.arcana === '大アルカナ'
+      ? (typeof c.number === 'number' && ROMAN[c.number] ? `大アルカナ · ${ROMAN[c.number]}` : '大アルカナ')
+      : `${esc(c.suit || '')}${c.element ? ' · ' + esc(c.element) : ''}`;
+    return `<div class="tz-face tz-front${rev ? ' is-rev' : ''}">
+      <div class="ar">${sub}</div>
+      <div class="ctr"><div class="nm">${esc(c.name)}</div><div class="en">${esc(c.en || '')}</div></div>
+      <div class="mo ${rev ? 'rev' : 'up'}">${rev ? '逆位置' : '正位置'}</div>
+    </div>`;
+  }
+  function flipCardHTML(c) {
+    return `<div class="tz"><div class="flip">${cardBackHTML()}${c ? cardFrontHTML(c) : cardBackHTML()}</div></div>`;
+  }
+
   const chat = document.getElementById('chat');
   const form = document.getElementById('composer');
   const input = document.getElementById('input');
@@ -171,6 +200,8 @@
   async function runReading() {
     // 有料モードは決済へ
     if (state.div && state.div.price) return goCheckout();
+    // タロットは演出（シャッフル→配布→めくり）を挟む
+    if (state.div && state.div.key === 'tarot') return runTarotReading();
     state.stage = 'reading';
     input.disabled = true; input.placeholder = '鑑定中…'; clearQuick();
     const t = typing();
@@ -187,6 +218,92 @@
     } catch (e) {
       t.remove(); await botSay('通信に失敗しました。少し時間をおいて再度お試しください。');
     }
+    offerRestart();
+  }
+
+  // ---------- タロット演出 ----------
+  const SPREAD_COUNT = { one: 1, three: 3, celtic: 10 };
+  const reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  async function runTarotReading() {
+    state.stage = 'reading';
+    input.disabled = true; input.placeholder = '鑑定中…'; clearQuick();
+    const spreadKey = state.answers.spread || 'one';
+    const count = SPREAD_COUNT[spreadKey] || 1;
+
+    // ステージ（束）をチャットに出す
+    const wrap = document.createElement('div');
+    wrap.className = 'msg bot';
+    const backs = Array.from({ length: 6 }, (_, i) => `<div class="tz d${i}">${cardBackHTML()}</div>`).join('');
+    wrap.innerHTML = `<div class="avatar">${SIGIL}</div>
+      <div class="bubble" style="width:100%;padding:0;background:transparent;border:none;box-shadow:none">
+        <div class="tarot-stage">
+          <div class="ts-caption">カードをシャッフルしています…</div>
+          <div class="ts-deck">${backs}</div>
+          <div class="ts-spread" data-count="${count}" hidden></div>
+        </div></div>`;
+    chat.appendChild(wrap); scroll();
+    const stage = wrap.querySelector('.tarot-stage');
+    const caption = stage.querySelector('.ts-caption');
+    const deck = stage.querySelector('.ts-deck');
+    const spread = stage.querySelector('.ts-spread');
+
+    // 鑑定取得は演出と並行して走らせる
+    const fetchP = fetch('/api/reading', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ divination: 'tarot', answers: state.answers, anonId }),
+    }).then((r) => r.json().then((d) => ({ ok: r.ok, data: d })))
+      .catch(() => ({ ok: false, data: { error: '通信に失敗しました' } }));
+
+    // シャッフル
+    if (!reduceMotion) {
+      deck.classList.add('shuffling');
+      await wait(3800);
+      deck.classList.remove('shuffling');
+      deck.classList.add('gather');
+      await wait(450);
+    } else { await wait(200); }
+
+    // 結果を待つ
+    const { ok, data } = await fetchP;
+    if (!ok || data.error) {
+      stage.remove();
+      await botSay(`うまく鑑定できませんでした。${esc((data && data.error) || '')}<br>もう一度お試しください。`);
+      offerRestart(); return;
+    }
+    const cards = (data.data && data.data.cards) || [];
+
+    // 束を引っ込めてスロットを配る
+    caption.textContent = 'カードを引いています…';
+    deck.classList.add('out');
+    await wait(reduceMotion ? 0 : 420);
+    deck.hidden = true;
+    spread.hidden = false;
+    spread.innerHTML = cards.map((c) =>
+      `<div class="ts-slot">${flipCardHTML(c)}<div class="ps">${esc(c.position)}</div></div>`
+    ).join('');
+    scroll();
+    const slots = [...spread.querySelectorAll('.ts-slot')];
+    // 配布（面を伏せたまま出現）
+    for (let i = 0; i < slots.length; i++) {
+      slots[i].classList.add('deal');
+      if (!reduceMotion) await wait(count > 3 ? 70 : 130);
+    }
+    await wait(reduceMotion ? 0 : 450);
+
+    // 1枚ずつめくる（ガチャ）
+    caption.textContent = 'カードが開かれます';
+    for (let i = 0; i < slots.length; i++) {
+      slots[i].classList.add('revealed', 'pop');
+      scroll();
+      if (!reduceMotion) await wait(count > 3 ? 360 : 620);
+    }
+    await wait(reduceMotion ? 0 : 500);
+    caption.classList.add('hide');
+
+    // 詳しい鑑定パネルを表示
+    await wait(reduceMotion ? 0 : 400);
+    renderResult(data);
     offerRestart();
   }
 
