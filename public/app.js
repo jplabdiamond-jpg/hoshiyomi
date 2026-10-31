@@ -442,7 +442,7 @@
     const wrap = document.createElement('div');
     wrap.className = 'msg bot';
     const readingBlock = isTarot
-      ? `<div class="scroll-paper"><div class="scroll-grain" aria-hidden="true"></div><div class="rbody scroll-text">${formatReading(data.reading)}</div></div>`
+      ? `<div class="scroll-wrap"><div class="scroll-paper"><div class="scroll-grain" aria-hidden="true"></div><div class="rbody scroll-text">${formatReading(data.reading)}</div></div><div class="scroll-roll l" aria-hidden="true"></div><div class="scroll-roll r" aria-hidden="true"></div></div>`
       : `<div class="rbody">${formatReading(data.reading)}</div>`;
     wrap.innerHTML = `<div class="avatar">${SIGIL}</div><div class="bubble" style="width:100%;padding:0;background:transparent;border:none;box-shadow:none">
       <div class="result${isTarot ? ' tarot-result' : ''}">
@@ -459,6 +459,29 @@
     chat.appendChild(wrap); scroll();
     const fb = wrap.querySelector('.fb');
     if (fb) wireFeedback(fb);
+    // 古代紙の本文を1文字ずつ、ランダムな順に約2秒かけて炙り出す
+    const scrollText = wrap.querySelector('.scroll-text');
+    if (scrollText && !reduceMotion) scorchReveal(scrollText, 2500, 2000);
+  }
+
+  // テキストを1文字ずつ span 化し、ランダムな遅延で浮かび上がらせる
+  function scorchReveal(root, startMs, spanMs) {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    for (const node of nodes) {
+      const text = node.nodeValue;
+      if (!text || !text.trim()) continue;
+      const frag = document.createDocumentFragment();
+      for (const ch of text) {
+        if (ch === ' ' || ch === '\n' || ch === '　' || ch === '\t') { frag.appendChild(document.createTextNode(ch)); continue; }
+        const s = document.createElement('span');
+        s.className = 'ch'; s.textContent = ch;
+        s.style.animationDelay = Math.round(startMs + Math.random() * spanMs) + 'ms';
+        frag.appendChild(s);
+      }
+      node.parentNode.replaceChild(frag, node);
+    }
   }
 
   function wireFeedback(fb) {

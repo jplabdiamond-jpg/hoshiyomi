@@ -347,28 +347,36 @@ body{
 .tarot-result > .disc,.tarot-result > .fb{opacity:0;animation:trFade .9s ease 5s forwards}
 @keyframes trFade{from{opacity:0}to{opacity:1}}
 
-/* 古代紙が広げられる */
-.scroll-paper{position:relative;margin:6px 14px 16px;border-radius:4px;padding:22px 24px;overflow:hidden;
-  color:#4a3721;border:1px solid rgba(120,86,40,.45);
+/* 古代紙（両サイドが巻物のように丸まった状態） */
+.scroll-wrap{position:relative;margin:8px 20px 18px}
+.scroll-paper{position:relative;margin:0 20px;border-radius:3px;padding:22px 26px;overflow:hidden;
+  color:#4a3721;border:1px solid rgba(120,86,40,.4);border-left:none;border-right:none;
   background:radial-gradient(130% 90% at 50% -4%,#f1e6ca,#e7d8b2 46%,#dcc8a0 100%);
-  box-shadow:0 12px 34px rgba(0,0,0,.55),inset 0 0 44px rgba(120,86,40,.3),inset 0 0 0 1px rgba(255,245,220,.35);
+  box-shadow:0 12px 34px rgba(0,0,0,.55),inset 0 0 44px rgba(120,86,40,.28);
   clip-path:inset(0 0 100% 0);animation:trUnroll 1s cubic-bezier(.3,.8,.3,1) 1.9s forwards}
 .scroll-paper::before,.scroll-paper::after{content:"";position:absolute;left:0;right:0;height:14px;pointer-events:none;z-index:2}
-.scroll-paper::before{top:0;background:linear-gradient(180deg,rgba(120,86,40,.28),transparent)}
-.scroll-paper::after{bottom:0;background:linear-gradient(0deg,rgba(120,86,40,.28),transparent)}
+.scroll-paper::before{top:0;background:linear-gradient(180deg,rgba(120,86,40,.26),transparent)}
+.scroll-paper::after{bottom:0;background:linear-gradient(0deg,rgba(120,86,40,.26),transparent)}
 .scroll-grain{position:absolute;inset:0;z-index:0;pointer-events:none;opacity:.5;mix-blend-mode:multiply;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E")}
 @keyframes trUnroll{0%{clip-path:inset(0 0 100% 0)}100%{clip-path:inset(0 0 0% 0)}}
+/* 左右の巻きロール */
+.scroll-roll{position:absolute;top:-7px;bottom:-7px;width:38px;z-index:4;pointer-events:none;border-radius:9px;
+  background:linear-gradient(90deg,#9c7d4c 0%,#c7ab7a 16%,#f3e9d0 42%,#efe2c2 56%,#cdb184 80%,#8f7042 100%);
+  box-shadow:0 10px 26px rgba(0,0,0,.5),inset 0 2px 3px rgba(255,248,224,.6),inset 0 -2px 4px rgba(90,64,30,.55)}
+.scroll-roll::before{content:"";position:absolute;top:6px;bottom:6px;width:7px;border-radius:50%;
+  background:linear-gradient(90deg,rgba(90,64,30,.55),rgba(255,248,224,.5));opacity:.8}
+.scroll-roll.l{left:-6px}
+.scroll-roll.l::before{right:3px}
+.scroll-roll.r{right:-6px}
+.scroll-roll.r::before{left:3px;background:linear-gradient(270deg,rgba(90,64,30,.55),rgba(255,248,224,.5))}
 
-/* 炙り出し：上から徐々に文字が浮かび上がる */
+/* 炙り出し：1文字ずつランダムに浮かび上がる */
 .scroll-text{position:relative;z-index:1;font-size:15.5px;color:#48331d;line-height:1.95;letter-spacing:.01em;
-  text-shadow:0 1px 0 rgba(255,248,225,.4);
-  clip-path:inset(0 0 100% 0);filter:sepia(.5) brightness(1.12) blur(.5px);
-  animation:trScorch 3.2s ease 2.5s forwards}
-@keyframes trScorch{0%{clip-path:inset(0 0 100% 0);filter:sepia(.5) brightness(1.12) blur(.5px)}
-  100%{clip-path:inset(0 0 0% 0);filter:sepia(0) brightness(1) blur(0)}}
-/* 炙り出しの先端に、にじむような焦げの光 */
-.scroll-paper .scorch-edge{display:none}
+  text-shadow:0 1px 0 rgba(255,248,225,.4)}
+.scroll-text .ch{display:inline-block;opacity:0;animation:chBurn .6s ease forwards}
+@keyframes chBurn{0%{opacity:0;filter:blur(3px) brightness(1.7) sepia(1);transform:scale(1.25)}
+  55%{opacity:1}100%{opacity:1;filter:blur(0) brightness(1) sepia(0);transform:none}}
 .scroll-text h4{color:#6b4a22;border-color:rgba(120,86,40,.35)}
 /* 見出し（■を除去・中央寄せ・大きめ） */
 .r-head{text-align:center;font-family:var(--mincho);font-weight:700;letter-spacing:.08em;margin:22px 0 12px;font-size:19px}
@@ -380,5 +388,5 @@ body{
 @media(prefers-reduced-motion:reduce){
   .tarot-result > .rhead,.tarot-result > .rbody,.tarot-result > .disc,.tarot-result > .fb{opacity:1;animation:none}
   .scroll-paper{clip-path:none;animation:none}
-  .scroll-text{-webkit-mask-image:none;mask-image:none;animation:none}
+  .scroll-text .ch{opacity:1;animation:none}
 }
