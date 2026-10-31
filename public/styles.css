@@ -175,6 +175,7 @@ body{
 }
 
 /* ===== タロット演出（シャッフル→配布→フリップ・ファンタジー） ===== */
+.msg.stagemsg{max-width:100%;width:100%}
 .tarot-stage{position:relative;width:100%;display:flex;flex-direction:column;align-items:center;gap:16px;
   padding:26px 10px 10px;min-height:280px;justify-content:center;overflow:hidden}
 .ts-caption,.ts-deck,.ts-spread{position:relative;z-index:2}
@@ -186,22 +187,33 @@ body{
 
 /* --- ファンタジー背景（魔法陣・舞う光） --- */
 .ts-fx{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden}
-.ts-circle{position:absolute;left:50%;top:46%;width:330px;height:330px;margin:-165px 0 0 -165px;color:var(--gold);
-  opacity:.2;animation:tzspin 30s linear infinite;filter:drop-shadow(0 0 12px rgba(227,200,141,.3));transition:opacity 1s}
+.ts-circle{position:absolute;left:50%;top:46%;width:540px;height:540px;margin:-270px 0 0 -270px;color:var(--gold);
+  opacity:.22;animation:tzspin 30s linear infinite,tzglow 3.4s ease-in-out infinite;filter:drop-shadow(0 0 14px rgba(227,200,141,.35));transition:opacity 1s}
 .ts-circle svg{width:100%;height:100%}
 .ts-circle::after{content:"";position:absolute;inset:0;animation:tzspin 44s linear infinite reverse}
-.ts-motes{position:absolute;inset:0;transition:opacity 1s}
-.ts-motes i{position:absolute;bottom:-8px;width:3px;height:3px;border-radius:50%;background:var(--gold);opacity:0;
-  box-shadow:0 0 7px 1px rgba(227,200,141,.85);animation:tzmote var(--dur) linear var(--d) infinite}
+.ts-motes,.ts-sparks{position:absolute;inset:0;transition:opacity 1s}
+.ts-motes i{position:absolute;bottom:-8px;width:3.5px;height:3.5px;border-radius:50%;background:#fff6dc;opacity:0;
+  box-shadow:0 0 9px 2px rgba(227,200,141,.95);animation:tzmote var(--dur) linear var(--d) infinite}
+.ts-sparks b{position:absolute;color:#fff3cf;line-height:1;opacity:0;text-shadow:0 0 10px rgba(227,200,141,.95),0 0 18px rgba(227,200,141,.5);
+  animation:tztwinkle var(--dur) ease-in-out var(--d) infinite}
+@keyframes tztwinkle{0%,100%{opacity:0;transform:scale(.3) rotate(0)}50%{opacity:.95;transform:scale(1) rotate(25deg)}}
+.tarot-stage.settled .ts-sparks{opacity:0}
 @keyframes tzspin{to{transform:rotate(360deg)}}
-@keyframes tzmote{0%{opacity:0;transform:translateY(0) scale(var(--sc))}12%{opacity:.95}
-  85%{opacity:.5}100%{opacity:0;transform:translateY(-250px) scale(var(--sc))}}
+@keyframes tzglow{0%,100%{filter:drop-shadow(0 0 12px rgba(227,200,141,.3))}50%{filter:drop-shadow(0 0 26px rgba(227,200,141,.7)) drop-shadow(0 0 48px rgba(227,200,141,.35))}}
+@keyframes tzmote{0%{opacity:0;transform:translateY(0) scale(var(--sc))}10%{opacity:1}
+  50%{opacity:.85;transform:translateY(-130px) scale(calc(var(--sc)*1.25))}
+  85%{opacity:.5}100%{opacity:0;transform:translateY(-280px) scale(var(--sc))}}
+/* シャッフル中：札を横切るゴールドの光沢 */
+.ts-deck.shuffling .tz-back::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(115deg,transparent 36%,rgba(255,240,205,.5) 50%,transparent 64%);
+  transform:translateX(-130%);animation:tzsheen 1.6s linear infinite}
+@keyframes tzsheen{0%{transform:translateX(-130%)}100%{transform:translateX(130%)}}
 .tarot-stage.settled .ts-circle{opacity:.1;animation-duration:70s}
 .tarot-stage.settled .ts-motes{opacity:0}
 
 /* --- カード共通 --- */
-.tz{--cw:112px;position:relative;width:var(--cw);height:calc(var(--cw)*1.78);border-radius:8px}
-.tz-face{position:absolute;inset:0;border-radius:8px;overflow:hidden;backface-visibility:hidden;
+.tz{--cw:224px;position:relative;width:var(--cw);height:calc(var(--cw)*1.78);border-radius:11px}
+.tz-face{position:absolute;inset:0;border-radius:11px;overflow:hidden;backface-visibility:hidden;
   -webkit-backface-visibility:hidden;box-shadow:0 12px 30px rgba(0,0,0,.55),0 0 0 1px rgba(0,0,0,.4)}
 /* 裏面 */
 .tz-back{background:radial-gradient(120% 90% at 50% 18%,rgba(201,168,106,.24),transparent 60%),linear-gradient(160deg,#1b1f38,#121524 60%,#0d1020)}
@@ -233,9 +245,9 @@ body{
 .tz-front .mo.rev{color:var(--oxblood);border:1px solid rgba(176,118,118,.48)}
 
 /* --- 束（シャッフル） --- */
-.ts-deck{width:170px;height:210px;perspective:1000px}
-.ts-deck::after{content:"";position:absolute;left:50%;top:50%;width:220px;height:220px;margin:-110px 0 0 -110px;z-index:-1;
-  border-radius:50%;background:radial-gradient(circle,rgba(227,200,141,.2),transparent 64%);animation:tzpulse 2.4s ease-in-out infinite}
+.ts-deck{width:330px;height:430px;perspective:1400px}
+.ts-deck::after{content:"";position:absolute;left:50%;top:50%;width:420px;height:420px;margin:-210px 0 0 -210px;z-index:-1;
+  border-radius:50%;background:radial-gradient(circle,rgba(227,200,141,.28),rgba(227,200,141,.08) 40%,transparent 66%);animation:tzpulse 2.4s ease-in-out infinite}
 .ts-deck .tz{position:absolute;left:50%;top:50%;margin:calc(var(--cw)*-0.8) 0 0 calc(var(--cw)*-0.5)}
 .ts-deck .d1{transform:translateY(-2px) rotate(-2deg)}.ts-deck .d2{transform:translateY(-4px) rotate(1.5deg)}
 .ts-deck .d3{transform:translateY(-6px) rotate(-1deg)}.ts-deck .d4{transform:translateY(-8px) rotate(2deg)}
@@ -255,34 +267,46 @@ body{
   50%{transform:translate(4px,2px) rotate(-2deg)}72%{transform:translate(34px,-7px) rotate(8deg)}100%{transform:translate(0,0) rotate(0)}}
 
 /* --- 配布＆フリップ --- */
-.ts-spread{display:flex;flex-wrap:wrap;gap:16px 13px;justify-content:center;align-items:flex-start;width:100%;max-width:580px}
+.ts-spread{display:flex;flex-wrap:wrap;gap:22px 16px;justify-content:center;align-items:flex-start;width:100%;max-width:740px}
 .ts-slot{display:flex;flex-direction:column;align-items:center;gap:7px;opacity:0;transform:translateY(16px) scale(.8)}
 .ts-slot.deal{opacity:1;transform:none;transition:transform .55s cubic-bezier(.2,.8,.2,1),opacity .55s}
 .ts-slot .tz{perspective:1000px}
 .ts-slot .flip{position:absolute;inset:0;transform-style:preserve-3d;transition:transform .9s cubic-bezier(.3,.9,.3,1);will-change:transform}
 .ts-slot.revealed .flip{transform:rotateY(180deg)}
-.ts-slot.pop .flip{animation:cardpop .9s ease}
-.ts-slot.pop .tz::after{content:"";position:absolute;inset:-7px;border-radius:13px;border:1px solid rgba(227,200,141,.85);opacity:0;animation:tzburst .9s ease;pointer-events:none}
-@keyframes cardpop{30%{filter:drop-shadow(0 0 2px rgba(227,200,141,0))}
-  55%{filter:drop-shadow(0 0 18px rgba(227,200,141,.9)) drop-shadow(0 0 34px rgba(227,200,141,.45))}
+.ts-slot.pop .flip{animation:cardpop 1.1s ease}
+/* 裏返り時：外周リングの弾け */
+.ts-slot.pop .tz::after{content:"";position:absolute;inset:-9px;border-radius:16px;border:2px solid rgba(227,200,141,.9);opacity:0;animation:tzburst 1.1s ease;pointer-events:none;z-index:3}
+/* 裏返り時：中心から広がる光のブルーム */
+.ts-slot.pop .tz::before{content:"";position:absolute;inset:-30% -20%;z-index:-1;pointer-events:none;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,244,214,.7),rgba(227,200,141,.35) 35%,transparent 70%);opacity:0;animation:tzbloom 1.1s ease}
+/* 表が現れた瞬間、札を横切る一閃の光 */
+.ts-slot .tz-front::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:2;
+  background:linear-gradient(115deg,transparent 32%,rgba(255,245,218,.65) 50%,transparent 68%);transform:translateX(-130%);opacity:0}
+.ts-slot.revealed .tz-front::after{animation:tzshine 1s ease .5s}
+@keyframes cardpop{30%{filter:drop-shadow(0 0 3px rgba(227,200,141,0))}
+  55%{filter:drop-shadow(0 0 26px rgba(227,200,141,1)) drop-shadow(0 0 52px rgba(227,200,141,.55))}
   100%{filter:drop-shadow(0 0 0 rgba(227,200,141,0))}}
-@keyframes tzburst{0%{opacity:0;transform:scale(.72)}42%{opacity:.9}100%{opacity:0;transform:scale(1.26)}}
+@keyframes tzburst{0%{opacity:0;transform:scale(.68)}42%{opacity:1}100%{opacity:0;transform:scale(1.32)}}
+@keyframes tzbloom{0%{opacity:0;transform:scale(.5)}45%{opacity:1;transform:scale(1.05)}100%{opacity:0;transform:scale(1.4)}}
+@keyframes tzshine{0%{transform:translateX(-130%);opacity:0}25%{opacity:1}100%{transform:translateX(130%);opacity:0}}
 .ts-slot .ps{font-size:11px;letter-spacing:.06em;color:var(--gold-deep);text-align:center;max-width:var(--cw,112px);line-height:1.3}
-.ts-spread[data-count="10"] .tz{--cw:80px}
-.ts-spread[data-count="10"]{max-width:620px;gap:12px 9px}
-.ts-spread[data-count="10"] .tz-svg{padding:6px 4px 5px;gap:1px}
-.ts-spread[data-count="10"] .tz-front .ar{font-size:7.5px}
-.ts-spread[data-count="10"] .tz-front .nm{font-size:11px;line-height:1.12}
-.ts-spread[data-count="10"] .tz-front .kw{display:none}
-.ts-spread[data-count="10"] .tz-front .mo{font-size:8px;padding:1px 6px;margin-top:2px}
+.ts-spread[data-count="10"] .tz{--cw:150px}
+.ts-spread[data-count="10"]{max-width:700px;gap:16px 12px}
+.ts-spread[data-count="10"] .tz-svg{padding:9px 6px 8px;gap:2px}
+.ts-spread[data-count="10"] .tz-front .ar{font-size:9.5px}
+.ts-spread[data-count="10"] .tz-front .nm{font-size:13.5px;line-height:1.16}
+.ts-spread[data-count="10"] .tz-front .kw{font-size:9.5px}
+.ts-spread[data-count="10"] .tz-front .mo{font-size:9px;padding:2px 8px;margin-top:3px}
 
 @media(max-width:600px){
-  .ts-spread .tz{--cw:96px}
-  .ts-spread[data-count="10"] .tz{--cw:64px}
-  .ts-spread[data-count="10"]{gap:10px 7px}
-  .ts-deck .tz{--cw:96px}
-  .tarot-stage{padding:18px 2px 6px;min-height:240px}
-  .ts-circle{width:280px;height:280px;margin:-140px 0 0 -140px}
+  .ts-spread .tz{--cw:168px}
+  .ts-spread[data-count="10"] .tz{--cw:124px}
+  .ts-spread[data-count="10"]{gap:12px 9px}
+  .ts-deck{width:250px;height:330px}
+  .ts-deck .tz{--cw:180px}
+  .ts-deck::after{width:320px;height:320px;margin:-160px 0 0 -160px}
+  .tarot-stage{padding:18px 2px 6px;min-height:300px}
+  .ts-circle{width:400px;height:400px;margin:-200px 0 0 -200px}
 }
 @media(prefers-reduced-motion:reduce){
   .ts-deck .tz,.ts-slot .flip,.ts-circle,.ts-motes i,.ts-deck::after{animation:none!important;transition:none!important}

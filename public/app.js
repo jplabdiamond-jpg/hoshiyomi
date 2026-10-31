@@ -276,16 +276,19 @@
     const count = SPREAD_COUNT[spreadKey] || 1;
 
     const wrap = document.createElement('div');
-    wrap.className = 'msg bot';
+    wrap.className = 'msg bot stagemsg';
     const backs = Array.from({ length: 6 }, (_, i) => `<div class="tz d${i}">${cardBackHTML()}</div>`).join('');
-    const motes = Array.from({ length: 16 }, () => {
-      const x = (Math.random() * 100).toFixed(1), d = (Math.random() * 5).toFixed(2), dur = (4 + Math.random() * 4).toFixed(2), sc = (0.5 + Math.random()).toFixed(2);
+    const motes = Array.from({ length: 28 }, () => {
+      const x = (Math.random() * 100).toFixed(1), d = (Math.random() * 5).toFixed(2), dur = (3.5 + Math.random() * 4).toFixed(2), sc = (0.5 + Math.random() * 1.3).toFixed(2);
       return `<i style="left:${x}%;--d:${d}s;--dur:${dur}s;--sc:${sc}"></i>`;
     }).join('');
-    wrap.innerHTML = `<div class="avatar">${SIGIL}</div>
-      <div class="bubble" style="width:100%;padding:0;background:transparent;border:none;box-shadow:none">
+    const sparks = Array.from({ length: 14 }, () => {
+      const x = (Math.random() * 100).toFixed(1), y = (Math.random() * 100).toFixed(1), d = (Math.random() * 4).toFixed(2), dur = (1.8 + Math.random() * 2.2).toFixed(2), s = (9 + Math.random() * 9).toFixed(0);
+      return `<b style="left:${x}%;top:${y}%;--d:${d}s;--dur:${dur}s;font-size:${s}px">✦</b>`;
+    }).join('');
+    wrap.innerHTML = `<div class="bubble" style="width:100%;padding:0;background:transparent;border:none;box-shadow:none">
         <div class="tarot-stage">
-          <div class="ts-fx" aria-hidden="true"><div class="ts-circle">${MAGIC_CIRCLE}</div><div class="ts-motes">${motes}</div></div>
+          <div class="ts-fx" aria-hidden="true"><div class="ts-circle">${MAGIC_CIRCLE}</div><div class="ts-motes">${motes}</div><div class="ts-sparks">${sparks}</div></div>
           <div class="ts-caption">星に問いを預けています…</div>
           <div class="ts-deck">${backs}</div>
           <div class="ts-spread" data-count="${count}" hidden></div>
