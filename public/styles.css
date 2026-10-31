@@ -144,12 +144,22 @@ body{
 .tl-k{font-family:var(--mincho);color:var(--gold);font-size:15px}
 .tl-g{color:var(--oxblood)}
 .tl-note{color:var(--muted);font-size:12px}
-.cards{display:flex;flex-wrap:wrap;gap:10px}
-.tcard{flex:1 1 140px;background:rgba(10,12,21,.55);border:1px solid var(--line2);border-radius:3px;padding:13px;min-width:130px}
-.tcard .pos{font-size:11px;color:var(--gold-deep);letter-spacing:.06em}
-.tcard .nm{font-family:var(--mincho);font-size:16px;margin:4px 0}
-.tcard .or{font-size:12px;color:var(--oxblood)}
-.tcard .kw{font-size:12px;color:var(--muted);margin-top:4px}
+.cards{display:flex;flex-wrap:wrap;gap:12px;white-space:normal}
+.tcard,.tcard-body,.tcard-body>div{white-space:normal}
+.tcard{position:relative;flex:1 1 155px;min-width:144px;max-width:210px;aspect-ratio:1/1.52;border:1px solid var(--line2);
+  border-radius:7px;overflow:hidden;box-shadow:0 8px 22px rgba(0,0,0,.5)}
+.tcard-img{position:absolute;inset:0;background-size:cover;background-position:center}
+.tcard-img.rev{transform:rotate(180deg) scale(1.06)}
+.tcard-art{position:absolute;inset:0;display:grid;place-items:center;background:radial-gradient(120% 70% at 50% 0%,rgba(201,168,106,.14),transparent 55%),linear-gradient(0deg,#0f1322,#191d31)}
+.tcard-art svg{width:74%;height:74%;color:var(--gold);opacity:.92;filter:drop-shadow(0 0 6px rgba(227,200,141,.3))}
+.tcard-art.rev svg{transform:rotate(180deg)}
+.tcard-ov{position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,12,21,.22) 0%,rgba(10,12,21,.44) 42%,rgba(10,12,21,.9) 100%)}
+.tcard-body{position:absolute;left:0;right:0;bottom:0;padding:10px 12px;z-index:2}
+.tcard-body .pos{font-size:10.5px;color:var(--gold);letter-spacing:.08em}
+.tcard-body .nm{font-family:var(--mincho);font-size:16.5px;color:#fff5e4;margin:2px 0 3px;text-shadow:0 1px 7px rgba(0,0,0,.85),0 0 14px rgba(0,0,0,.6)}
+.tcard-body .or{font-size:11.5px;color:var(--gold-deep)}
+.tcard-body .or.rev{color:var(--oxblood)}
+.tcard-body .kw{font-size:11px;color:#c9cbd6;margin-top:3px;line-height:1.45;text-shadow:0 1px 4px rgba(0,0,0,.8)}
 .disc{font-size:11.5px;color:var(--faint);padding:11px 18px;border-top:1px solid var(--line2);line-height:1.6}
 .fb{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 18px;border-top:1px solid var(--line2)}
 .fb-q{font-size:12.5px;color:var(--muted)}
@@ -187,6 +197,12 @@ body{
 
 /* --- ファンタジー背景（魔法陣・舞う光） --- */
 .ts-fx{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+/* 回転する光条（ゴッドレイ） */
+.ts-rays{position:absolute;left:50%;top:46%;width:680px;height:680px;margin:-340px 0 0 -340px;pointer-events:none;opacity:.14;transition:opacity 1s;
+  background:repeating-conic-gradient(from 0deg,rgba(227,200,141,.55) 0deg 2.2deg,transparent 2.2deg 13deg);
+  -webkit-mask:radial-gradient(circle,#000 8%,rgba(0,0,0,.5) 34%,transparent 60%);mask:radial-gradient(circle,#000 8%,rgba(0,0,0,.5) 34%,transparent 60%);
+  animation:tzspin 44s linear infinite}
+.tarot-stage.settled .ts-rays{opacity:0}
 .ts-circle{position:absolute;left:50%;top:46%;width:540px;height:540px;margin:-270px 0 0 -270px;color:var(--gold);
   opacity:.22;animation:tzspin 30s linear infinite,tzglow 3.4s ease-in-out infinite;filter:drop-shadow(0 0 14px rgba(227,200,141,.35));transition:opacity 1s}
 .ts-circle svg{width:100%;height:100%}
@@ -275,14 +291,25 @@ body{
 .ts-slot.revealed .flip{transform:rotateY(180deg)}
 .ts-slot.pop .flip{animation:cardpop 1.1s ease}
 /* 裏返り時：外周リングの弾け */
-.ts-slot.pop .tz::after{content:"";position:absolute;inset:-9px;border-radius:16px;border:2px solid rgba(227,200,141,.9);opacity:0;animation:tzburst 1.1s ease;pointer-events:none;z-index:3}
+.ts-slot.pop .tz::after{content:"";position:absolute;inset:-12px;border-radius:18px;border:2.5px solid rgba(227,200,141,.95);opacity:0;animation:tzburst 1.1s ease;pointer-events:none;z-index:4;box-shadow:0 0 22px rgba(227,200,141,.6)}
 /* 裏返り時：中心から広がる光のブルーム */
-.ts-slot.pop .tz::before{content:"";position:absolute;inset:-30% -20%;z-index:-1;pointer-events:none;border-radius:50%;
-  background:radial-gradient(circle,rgba(255,244,214,.7),rgba(227,200,141,.35) 35%,transparent 70%);opacity:0;animation:tzbloom 1.1s ease}
+.ts-slot.pop .tz::before{content:"";position:absolute;inset:-48% -38%;z-index:-1;pointer-events:none;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,248,225,.85),rgba(227,200,141,.45) 32%,rgba(227,200,141,.12) 55%,transparent 72%);opacity:0;animation:tzbloom 1.2s ease}
 /* 表が現れた瞬間、札を横切る一閃の光 */
 .ts-slot .tz-front::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:2;
-  background:linear-gradient(115deg,transparent 32%,rgba(255,245,218,.65) 50%,transparent 68%);transform:translateX(-130%);opacity:0}
+  background:linear-gradient(115deg,transparent 30%,rgba(255,248,225,.85) 50%,transparent 70%);transform:translateX(-130%);opacity:0}
 .ts-slot.revealed .tz-front::after{animation:tzshine 1s ease .5s}
+/* 表が現れた瞬間の閃光 */
+.ts-slot .tz-front::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:3;opacity:0;
+  background:radial-gradient(circle at 50% 45%,rgba(255,252,240,.95),rgba(255,240,205,.3) 45%,transparent 72%)}
+.ts-slot.revealed .tz-front::before{animation:tzflash .7s ease .42s}
+@keyframes tzflash{0%{opacity:0}26%{opacity:.9}100%{opacity:0}}
+/* 弾け飛ぶ光の粒子 */
+.ts-spark-burst{position:absolute;inset:0;pointer-events:none;z-index:6}
+.ts-spark-burst i{position:absolute;left:50%;top:48%;width:var(--sz,5px);height:var(--sz,5px);border-radius:50%;background:#fff6dc;
+  box-shadow:0 0 9px 2px rgba(227,200,141,.95),0 0 16px 4px rgba(227,200,141,.4);opacity:0;animation:tzfly 1s ease var(--dl) forwards}
+@keyframes tzfly{0%{opacity:0;transform:translate(-50%,-50%) scale(.3)}18%{opacity:1}
+  100%{opacity:0;transform:translate(calc(-50% + var(--tx)),calc(-50% + var(--ty))) scale(.9)}}
 @keyframes cardpop{30%{filter:drop-shadow(0 0 3px rgba(227,200,141,0))}
   55%{filter:drop-shadow(0 0 26px rgba(227,200,141,1)) drop-shadow(0 0 52px rgba(227,200,141,.55))}
   100%{filter:drop-shadow(0 0 0 rgba(227,200,141,0))}}

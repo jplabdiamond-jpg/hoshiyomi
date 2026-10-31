@@ -269,6 +269,25 @@
     <circle cx="100" cy="100" r="30" stroke-width="0.6" opacity=".5"/>
   </svg>`;
 
+  // 裏返り時に、カードから光の粒子が弾け飛ぶ
+  function sparkleBurst(slot) {
+    const tz = slot.querySelector('.tz'); if (!tz) return;
+    const burst = document.createElement('div'); burst.className = 'ts-spark-burst';
+    const n = 12;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * 360 + (Math.random() * 24 - 12);
+      const dist = 46 + Math.random() * 70;
+      const s = document.createElement('i');
+      s.style.setProperty('--tx', (Math.cos(a * Math.PI / 180) * dist).toFixed(1) + 'px');
+      s.style.setProperty('--ty', (Math.sin(a * Math.PI / 180) * dist).toFixed(1) + 'px');
+      s.style.setProperty('--dl', (Math.random() * 0.12).toFixed(2) + 's');
+      s.style.setProperty('--sz', (3 + Math.random() * 4).toFixed(1) + 'px');
+      burst.appendChild(s);
+    }
+    tz.appendChild(burst);
+    setTimeout(() => burst.remove(), 1300);
+  }
+
   async function runTarotReading() {
     state.stage = 'reading';
     input.disabled = true; input.placeholder = '鑑定中…'; clearQuick();
@@ -288,7 +307,7 @@
     }).join('');
     wrap.innerHTML = `<div class="bubble" style="width:100%;padding:0;background:transparent;border:none;box-shadow:none">
         <div class="tarot-stage">
-          <div class="ts-fx" aria-hidden="true"><div class="ts-circle">${MAGIC_CIRCLE}</div><div class="ts-motes">${motes}</div><div class="ts-sparks">${sparks}</div></div>
+          <div class="ts-fx" aria-hidden="true"><div class="ts-rays"></div><div class="ts-circle">${MAGIC_CIRCLE}</div><div class="ts-motes">${motes}</div><div class="ts-sparks">${sparks}</div></div>
           <div class="ts-caption">星に問いを預けています…</div>
           <div class="ts-deck">${backs}</div>
           <div class="ts-spread" data-count="${count}" hidden></div>
@@ -359,6 +378,7 @@
     setCap('✦ カードが開かれます ✦');
     for (let i = 0; i < slots.length; i++) {
       slots[i].classList.add('revealed', 'pop');
+      if (!reduceMotion) setTimeout(() => sparkleBurst(slots[i]), 380);
       scroll();
       if (!reduceMotion) await wait(count > 3 ? 400 : 680);
     }
@@ -559,10 +579,21 @@
     }
 
     if (data.divination === 'tarot') {
-      const cards = d.cards.map((c) =>
-        `<div class="tcard"><div class="pos">${esc(c.position)}</div><div class="nm">${esc(c.name)}</div>
-          <div class="or">${esc(c.orientation)}</div><div class="kw">${esc(c.keywords.join('・'))}</div></div>`
-      ).join('');
+      const cards = d.cards.map((c) => {
+        const id = cardImgId(c);
+        const rev = c.orientation === '逆位置';
+        const bg = id
+          ? `<div class="tcard-img${rev ? ' rev' : ''}" style="background-image:url('/cards/${id}.webp')"></div>`
+          : `<div class="tcard-art${rev ? ' rev' : ''}">${(window.SVTarotArt && SVTarotArt.cardArt) ? SVTarotArt.cardArt(c) : ''}</div>`;
+        return `<div class="tcard">
+          ${bg}<div class="tcard-ov"></div>
+          <div class="tcard-body">
+            <div class="pos">${esc(c.position)}</div>
+            <div class="nm">${esc(c.name)}</div>
+            <div class="or ${rev ? 'rev' : ''}">${esc(c.orientation)}</div>
+            <div class="kw">${esc(c.keywords.join('・'))}</div>
+          </div></div>`;
+      }).join('');
       return `<div class="rbody" style="border-bottom:1px solid var(--line)">
         <h4 style="margin-top:0">${esc(d.spread)}</h4><div class="cards">${cards}</div></div>`;
     }
