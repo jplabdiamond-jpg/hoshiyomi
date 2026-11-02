@@ -261,8 +261,15 @@ export function buildMessages(key, computed, answers) {
       'データにない出来事・時期・数値を創作しないこと。年収や生活情報は説教や決めつけに使わず、前向きな選択肢と対策の提案に使う。確度や統計は「複数の占術・傾向が重なった度合いの目安」であり絶対の予言ではないと、鑑定の自然な流れの中で一言添える。';
   }
 
+  // 画像base64など巨大な値はプロンプトに入れない（トークン超過の原因になる）
+  const safeAnswers = { ...answers };
+  if (safeAnswers.palmImage) safeAnswers.palmImage = '[写真アップロード済み]';
+  for (const k of Object.keys(safeAnswers)) {
+    if (typeof safeAnswers[k] === 'string' && safeAnswers[k].length > 500) safeAnswers[k] = safeAnswers[k].slice(0, 500) + '…';
+  }
+
   const user =
-    `【占術】${computed.title}\n【相談者の入力】${JSON.stringify(answers)}\n\n` +
+    `【占術】${computed.title}\n【相談者の入力】${JSON.stringify(safeAnswers)}\n\n` +
     `【鑑定データ（確定値・この範囲で解釈すること）】\n${computed.material}\n\n` +
     `【依頼】\n${instruction}`;
 
