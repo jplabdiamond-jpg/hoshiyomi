@@ -110,7 +110,7 @@ export function computeDivination(key, answers, opts = {}) {
     const foresight = computeForesight({
       fp, chart, birthYear: d.year, birthMonth: d.month, birthDay: d.day,
       gender: answers.gender, nowYear: now.getFullYear(), nowMonth: now.getMonth() + 1,
-      profileNet: profile.net, calibWeights: opts.calibWeights || {},
+      profileNet: profile.net, calibWeights: opts.calibWeights || {}, specTable: opts.specTable || {},
     });
 
     // 本人の状況（占術の入力ではなく、アドバイスを具体化する文脈）

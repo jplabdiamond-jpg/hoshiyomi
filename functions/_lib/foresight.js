@@ -56,6 +56,17 @@ function transitDomains(natal, body, aspect) {
   return [{ domain: dom, pol, why }];
 }
 
+// ── A/C 用：各シグナルに「安定したパターンID」を付ける ──
+// 個人によらず共通する単位。希少度較正（ベースレート）とパターン別の実測較正を同じ語彙で行う。
+function godClass(g) {
+  if (['偏官', '正官'].includes(g)) return '官殺';
+  if (['偏財', '正財'].includes(g)) return '財';
+  if (['偏印', '正印'].includes(g)) return '印';
+  if (['比肩', '劫財'].includes(g)) return '比劫';
+  return '食傷';
+}
+const patTransit = (body, aspect) => `astro:${body}:${HARD.includes(aspect) ? 'hard' : 'soft'}`;
+
 // ── ① 日付レンジのラベル化 ──
 function decade(day) { return day <= 10 ? '上旬' : day <= 20 ? '中旬' : '下旬'; }
 function rangeLabel(startISO, endISO, peakISO) {
@@ -78,16 +89,20 @@ function rangeLabel(startISO, endISO, peakISO) {
   return { label, peakLabel };
 }
 
-// ── ② 確度（合致本数＋実測較正） ──
-function confidence(systems, { transitTight = 0, calibWeights = {} } = {}) {
-  const n = systems.length;
-  const base = n >= 4 ? 92 : n === 3 ? 80 : n === 2 ? 60 : 35;
-  // 較正：寄与した占術の実測的中率から得た重み（平均）。データが無ければ1.0（＝ヒューリスティックのまま）
-  let w = 0, cnt = 0;
-  for (const s of systems) { const v = calibWeights[s]; if (typeof v === 'number') { w += v; cnt++; } }
-  const calib = cnt ? w / cnt : 1;
-  const c = Math.round(Math.max(5, Math.min(99, (base + transitTight) * calib)));
-  return c;
+// ── ② 確度（合致本数 × 希少度較正[A] × 実測較正[C]） ──
+// base    : 独立した占術体系が何系統重なるか（合致の強さ）
+// specTable[pattern]   : A 希少度の重み（珍しいパターンほど>1、ほぼ全員に出るパターンは<1）
+// calibWeights[pattern]: C 実測フィードバックの重み（当たりやすいパターンほど>1）
+function confidence(systemsCount, patterns, { transitTight = 0, specTable = {}, calibWeights = {} } = {}) {
+  const base = systemsCount >= 4 ? 92 : systemsCount === 3 ? 80 : systemsCount === 2 ? 60 : 35;
+  let sum = 0, cnt = 0;
+  for (const p of patterns) {
+    const s = typeof specTable[p] === 'number' ? specTable[p] : 1;
+    const k = typeof calibWeights[p] === 'number' ? calibWeights[p] : 1;
+    sum += s * k; cnt++;
+  }
+  const mult = cnt ? Math.max(0.5, Math.min(1.6, sum / cnt)) : 1;
+  return Math.round(Math.max(5, Math.min(99, (base + transitTight) * mult)));
 }
 const levelOf = (c) => (c >= 75 ? '高' : c >= 55 ? '中' : '低');
 
@@ -111,7 +126,8 @@ export function computeForesight(o) {
   const dStem = fp.dayStemIdx, dBranch = fp.dayBranchIdx;
   const nowYear = o.nowYear, nowMonth = o.nowMonth;
   const profileNet = o.profileNet || {};
-  const calibWeights = o.calibWeights || {};
+  const calibWeights = o.calibWeights || {}; // C: パターン別の実測重み
+  const specTable = o.specTable || {};       // A: パターン別の希少度重み
 
   // --- 流月（UI表示用=12ヶ月、合致判定用=24ヶ月） ---
   const monthsAll = [];
@@ -152,29 +168,29 @@ export function computeForesight(o) {
 
   // --- 年ごとのシグナル（年解像度。合致点＆年単位の確度に使う） ---
   const SYS = { fp: '四柱推命', astro: '占星術', num: '数秘術', node: '節目' };
-  const yearSignals = {}; // year -> [{sys,label,domains}]
-  const pushYear = (year, sys, label, domains) => {
+  const yearSignals = {}; // year -> [{sys,label,domains,pattern}]
+  const pushYear = (year, sys, label, domains, pattern) => {
     if (year < nowYear || year > nowYear + 7) return;
-    (yearSignals[year] = yearSignals[year] || []).push({ sys, label, domains: domains || [] });
+    (yearSignals[year] = yearSignals[year] || []).push({ sys, label, domains: domains || [], pattern });
   };
-  for (const y of fp.liuNian || []) if (y.note) pushYear(y.year, SYS.fp, `流年:${y.note}`, godDomains(y.tenGod));
+  for (const y of fp.liuNian || []) if (y.note) pushYear(y.year, SYS.fp, `流年:${y.note}`, godDomains(y.tenGod), y.clash ? 'fp:y:冲' : `fp:y:${godClass(y.tenGod)}`);
   if (fp.daYun) {
     for (const p of fp.daYun.pillars) {
-      if (p.note) { const y = Math.round(o.birthYear + p.ageStart); pushYear(y, SYS.fp, `大運の切替:${p.note}`, godDomains(p.tenGod)); }
+      if (p.note) { const y = Math.round(o.birthYear + p.ageStart); pushYear(y, SYS.fp, `大運の切替:${p.note}`, godDomains(p.tenGod), `fp:dy:${godClass(p.tenGod)}`); }
     }
   }
   for (const h of chart?.transits || []) {
     const y = parseInt(h.ym);
-    pushYear(y, SYS.astro, `${h.transit}が${h.natal}に${h.aspect}`, transitDomains(h.natal, h.transit, h.aspect));
+    pushYear(y, SYS.astro, `${h.transit}が${h.natal}に${h.aspect}`, transitDomains(h.natal, h.transit, h.aspect), patTransit(h.transit, h.aspect));
   }
   for (const p of pys) {
-    if (p.number === 1) pushYear(p.year, SYS.num, '新サイクルの始まり', [{ domain: 'キャリア', pol: 0, why: '仕切り直し・種まき' }]);
-    if (p.number === 9) pushYear(p.year, SYS.num, '区切り・完結の年', [{ domain: 'メンタル', pol: 0, why: '手放しと整理' }]);
-    if (p.number === 8) pushYear(p.year, SYS.num, '収穫・成果の年', [{ domain: '金銭', pol: 1, why: '努力が実りやすい' }]);
+    if (p.number === 1) pushYear(p.year, SYS.num, '新サイクルの始まり', [{ domain: 'キャリア', pol: 0, why: '仕切り直し・種まき' }], 'num:py1');
+    if (p.number === 9) pushYear(p.year, SYS.num, '区切り・完結の年', [{ domain: 'メンタル', pol: 0, why: '手放しと整理' }], 'num:py9');
+    if (p.number === 8) pushYear(p.year, SYS.num, '収穫・成果の年', [{ domain: '金銭', pol: 1, why: '努力が実りやすい' }], 'num:py8');
   }
   for (const ms of milestones) pushYear(ms.year, SYS.node, ms.name, ms.name === 'サターンリターン'
     ? [{ domain: 'キャリア', pol: 0, why: '基盤の再構築' }, { domain: 'メンタル', pol: -1, why: '重さを感じやすい節目' }]
-    : [{ domain: 'キャリア', pol: 0, why: '環境が動く節目' }]);
+    : [{ domain: 'キャリア', pol: 0, why: '環境が動く節目' }], `node:${ms.name}`);
 
   // 年解像度の合致点（従来互換：ヒートマップ／年タイムライン用）
   const convergence = [];
@@ -182,7 +198,8 @@ export function computeForesight(o) {
     const y = nowYear + i;
     const sig = yearSignals[y] || [];
     const srcs = [...new Set(sig.map((s) => s.sys))];
-    const conf = sig.length ? confidence(srcs, { calibWeights }) : 0;
+    const pats = [...new Set(sig.map((s) => s.pattern).filter(Boolean))];
+    const conf = sig.length ? confidence(srcs.length, pats, { specTable, calibWeights }) : 0;
     convergence.push({ year: y, age: y - o.birthYear, count: sig.length, srcCount: srcs.length, conf, level: srcs.length ? levelOf(conf) : '-', signals: sig.map((s) => ({ src: s.sys, label: s.label })) });
   }
 
@@ -199,7 +216,7 @@ export function computeForesight(o) {
     if (!inHorizon(y, m)) continue;
     const key = `${y}-${String(m).padStart(2, '0')}`;
     const w = ensure(key, y, m);
-    w.signals.push({ sys: SYS.astro, label: `運行する${h.transit}が${h.natal}に${h.aspect}（${h.theme}）`, domains: transitDomains(h.natal, h.transit, h.aspect) });
+    w.signals.push({ sys: SYS.astro, label: `運行する${h.transit}が${h.natal}に${h.aspect}（${h.theme}）`, domains: transitDomains(h.natal, h.transit, h.aspect), pattern: patTransit(h.transit, h.aspect) });
     const r = rangeLabel(h.start, h.end, h.peak);
     w.transit = { ...r, theme: h.theme, body: h.transit };
   }
@@ -207,7 +224,7 @@ export function computeForesight(o) {
     if (!(mm.clash || ['偏官', '正官'].includes(mm.tenGod))) continue;
     const key = mm.key;
     const w = ensure(key, mm.year, mm.month);
-    w.signals.push({ sys: SYS.fp, label: `流月 ${mm.kanshi}：${mm.theme}${mm.clash ? '／変化が起きやすい月' : ''}`, domains: godDomains(mm.tenGod) });
+    w.signals.push({ sys: SYS.fp, label: `流月 ${mm.kanshi}：${mm.theme}${mm.clash ? '／変化が起きやすい月' : ''}`, domains: godDomains(mm.tenGod), pattern: mm.clash ? 'fp:m:冲' : `fp:m:${godClass(mm.tenGod)}` });
   }
 
   const windows = [];
@@ -217,8 +234,9 @@ export function computeForesight(o) {
     // この窓に効く占術＝月シグナル ∪ その年の年シグナル
     const allSig = [...w.signals, ...yearSys];
     const systems = [...new Set(allSig.map((s) => s.sys))];
+    const patterns = [...new Set(allSig.map((s) => s.pattern).filter(Boolean))];
     const transitTight = w.transit ? 6 : 0;
-    const conf = confidence(systems, { transitTight, calibWeights });
+    const conf = confidence(systems.length, patterns, { transitTight, specTable, calibWeights });
     const domains = mergeDomains(allSig.flatMap((s) => s.domains || []))
       .map((d) => ({ ...d, net: profileNet[d.domain] ?? 0 }));
     // 時期ラベル：トランジット窓があればレンジ、なければ月単位
@@ -230,7 +248,7 @@ export function computeForesight(o) {
     if (yearCtxLabels.length) detail.push({ src: `${w.year}年の流れ`, label: yearCtxLabels.join('／') });
     windows.push({
       key, year: w.year, month: w.month, resolution: w.transit ? 'range' : 'month',
-      label, peakLabel, systems, conf, level: levelOf(conf), domains,
+      label, peakLabel, systems, patterns, conf, level: levelOf(conf), domains,
       signals: detail,
     });
   }
@@ -251,13 +269,18 @@ export function computeForesight(o) {
     trend.push({ year: y, score: Math.max(-3, Math.min(3, s)) });
   }
 
-  // ④ 用：この鑑定で確度に寄与した占術（高・中の窓／年合致）
-  const systemsUsed = [...new Set([
-    ...topWindows.filter((w) => w.level !== '低').flatMap((w) => w.systems),
-    ...convergence.filter((c) => c.srcCount >= 2).flatMap((c) => [...new Set(c.signals.map((s) => s.src))]),
-  ])];
+  // 希少度較正(A)の母数集計用：この人に出た全パターン（上位抽出・重み付けに依存しない）
+  const allPatterns = [...new Set([
+    ...Object.values(monthWindows).flatMap((w) => w.signals.map((s) => s.pattern)),
+    ...Object.values(yearSignals).flat().map((s) => s.pattern),
+  ].filter(Boolean))];
 
-  return { months, personalYears: pys, milestones, convergence, windows: topWindows, trend, systemsUsed };
+  // C 用：この鑑定で確度に寄与したパターン（高・中の窓）。後日フィードバックが来たら較正に使う
+  const patternsUsed = [...new Set(
+    topWindows.filter((w) => w.level !== '低').flatMap((w) => w.patterns || [])
+  )];
+
+  return { months, personalYears: pys, milestones, convergence, windows: topWindows, trend, allPatterns, patternsUsed };
 }
 
 const POLMARK = (p) => (p > 0 ? '追い風' : p < 0 ? '要注意' : '変化');
