@@ -17,21 +17,51 @@ const PALM_VISION_PROMPT =
   '推測で線を作らず、実際に見える範囲のみを述べること。観点: ①手全体の形と指の長さの印象 ②生命線・知能線(頭脳線)・感情線・運命線・太陽線・結婚線などの主要な線が「見えるかどうか」、見えるものについては長さ・濃さ・はっきりさ・カーブ・切れ目や枝分かれ・島の有無 ③手のひらのふくらみ（丘）の印象。' +
   'もし手のひらがはっきり写っていない、または手の写真でない場合は、必ず先頭に「[NOT_PALM]」とだけ書き、続けて理由を一言添えること。';
 
-// 写真から手相の特徴を抽出（ビジョンモデル）
+// 候補のビジョンモデル（上から順に試す）。
+// llama-3.2-visionはアカウントでのライセンス同意が必要なため、非ゲートのモデルも併せて試す。
+// kind: 'messages'=image_url(dataURL)形式 / 'llava'=バイト配列+prompt形式。
+const VISION_CANDIDATES = [
+  { model: '@cf/qwen/qwen2-vl-7b-instruct', kind: 'messages' },
+  { model: '@cf/meta/llama-3.2-11b-vision-instruct', kind: 'messages' },
+  { model: '@cf/unum/uform-gen2-qwen-500m', kind: 'llava' },
+  { model: '@cf/llava-hf/llava-1.5-7b-hf', kind: 'llava' },
+];
+
+function dataUrlToBytes(u) {
+  const b64 = (u.split(',')[1] || '');
+  const bin = atob(b64);
+  const a = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
+  return [...a];
+}
+
+// 写真から手相の特徴を抽出。利用可能なビジョンモデルを順に試す。
 async function extractPalmFeatures(env, dataUrl) {
-  const model = env.PALM_VISION_MODEL || DEFAULT_VISION_MODEL;
-  const resp = await env.AI.run(model, {
-    messages: [{
-      role: 'user',
-      content: [
-        { type: 'text', text: PALM_VISION_PROMPT },
-        { type: 'image_url', image_url: { url: dataUrl } },
-      ],
-    }],
-    max_tokens: 768,
-    temperature: 0.2,
-  });
-  return { model, text: (resp && (resp.response || resp.result || '')).trim() };
+  const pref = env.PALM_VISION_MODEL
+    ? [{ model: env.PALM_VISION_MODEL, kind: env.PALM_VISION_MODEL.includes('llava') || env.PALM_VISION_MODEL.includes('uform') ? 'llava' : 'messages' }]
+    : [];
+  const list = [...pref, ...VISION_CANDIDATES.filter((c) => !pref.some((p) => p.model === c.model))];
+  let lastErr = null;
+  for (const c of list) {
+    try {
+      let text = '';
+      if (c.kind === 'messages') {
+        const r = await env.AI.run(c.model, {
+          messages: [{ role: 'user', content: [
+            { type: 'text', text: PALM_VISION_PROMPT },
+            { type: 'image_url', image_url: { url: dataUrl } },
+          ] }],
+          max_tokens: 768, temperature: 0.2,
+        });
+        text = (r && (r.response || r.result || '')).trim();
+      } else {
+        const r = await env.AI.run(c.model, { image: dataUrlToBytes(dataUrl), prompt: PALM_VISION_PROMPT, max_tokens: 768 });
+        text = (r && (r.description || r.response || r.result || '')).trim();
+      }
+      if (text) return { model: c.model, text };
+    } catch (e) { lastErr = e; }
+  }
+  throw lastErr || new Error('利用可能なビジョンモデルがありません');
 }
 
 const json = (obj, status = 200) =>
