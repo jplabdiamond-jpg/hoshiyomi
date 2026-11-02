@@ -20,10 +20,10 @@ const PALM_VISION_PROMPT =
 // 候補のビジョンモデル（上から順に試す）。
 // llama-3.2-visionはアカウントでのライセンス同意が必要なため、非ゲートのモデルも併せて試す。
 // kind: 'messages'=image_url(dataURL)形式 / 'llava'=バイト配列+prompt形式。
+// 現状Workers AIで即使える非ゲートの実働モデルは llava。
+// 高品質なLlama 3.2 Vision を使う場合は、アカウントでライセンス同意後に
+// 環境変数 PALM_VISION_MODEL=@cf/meta/llama-3.2-11b-vision-instruct を設定すれば優先される。
 const VISION_CANDIDATES = [
-  { model: '@cf/qwen/qwen2-vl-7b-instruct', kind: 'messages' },
-  { model: '@cf/meta/llama-3.2-11b-vision-instruct', kind: 'messages' },
-  { model: '@cf/unum/uform-gen2-qwen-500m', kind: 'llava' },
   { model: '@cf/llava-hf/llava-1.5-7b-hf', kind: 'llava' },
 ];
 
