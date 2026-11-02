@@ -238,6 +238,25 @@ function sep(a, b) {
   return d > 180 ? 360 - d : d;
 }
 
+// アスペクトが「効いている」期間（オーブ窓）を日単位で絞り込む。
+// peakDate 前後を走査し、|離角-角度| が winOrb 以下に収まる連続区間を返す。
+// 外惑星は動きが遅いため数週間〜数ヶ月の幅になる（＝未来視の「時期レンジ」）。
+function refineWindow(body, natalLon, angle, peakDate, winOrb = 1.0, spanDays = 150, stepDays = 5) {
+  const at = (offset) => {
+    const d = new Date(peakDate.getTime() + offset * 86400000);
+    const lon = eclipticLongitude(body, new Astronomy.AstroTime(d));
+    return Math.abs(sep(lon, natalLon) - angle);
+  };
+  let start = peakDate, end = peakDate;
+  for (let o = -stepDays; o >= -spanDays; o -= stepDays) {
+    if (at(o) <= winOrb) start = new Date(peakDate.getTime() + o * 86400000); else break;
+  }
+  for (let o = stepDays; o <= spanDays; o += stepDays) {
+    if (at(o) <= winOrb) end = new Date(peakDate.getTime() + o * 86400000); else break;
+  }
+  return { start, end };
+}
+
 export function forecastTransits(chart, nowDate, months = 30) {
   const points = [
     { name: '太陽', lon: chart.planets[0].longitude },
@@ -274,6 +293,7 @@ export function forecastTransits(chart, nowDate, months = 30) {
               theme: tb.theme,
               natal: pt.name,
               aspect: asp.ja,
+              _body: tb.body, _natalLon: pt.lon, _angle: asp.angle,
             });
           }
           prev = cur;
@@ -289,7 +309,21 @@ export function forecastTransits(chart, nowDate, months = 30) {
     const dup = deduped.find((x) => `${x.transit}|${x.natal}|${x.aspect}` === key && Math.abs(x.date - h.date) < 150 * 86400000);
     if (!dup) deduped.push(h);
   }
-  return deduped.slice(0, 10);
+  const top = deduped.slice(0, 10);
+  // 上位の転機にオーブ窓（効いている期間）を付与し、内部参照は落とす
+  for (let i = 0; i < top.length; i++) {
+    const h = top[i];
+    try {
+      if (i < 8) {
+        const w = refineWindow(h._body, h._natalLon, h._angle, h.date);
+        h.start = w.start.toISOString();
+        h.end = w.end.toISOString();
+      }
+    } catch { /* 窓が取れなくてもピーク日は有効 */ }
+    h.peak = h.date.toISOString();
+    delete h._body; delete h._natalLon; delete h._angle;
+  }
+  return top;
 }
 
 export function summarizeTransits(hits) {

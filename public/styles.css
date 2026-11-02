@@ -144,6 +144,11 @@ body{
 .tl-k{font-family:var(--mincho);color:var(--gold);font-size:15px}
 .tl-g{color:var(--oxblood)}
 .tl-note{color:var(--muted);font-size:12px}
+.win-peak{display:inline-block;margin-left:7px;color:var(--gold);font-size:11.5px;font-weight:600}
+.win-doms{display:block;margin-top:4px}
+.dom-chip{display:inline-block;margin:2px 4px 0 0;padding:1px 7px;border-radius:2px;font-size:10.5px;
+  color:var(--gold-deep);background:rgba(201,168,106,.1);border:1px solid var(--line2)}
+.dom-chip.dom-overlap{color:var(--oxblood);background:rgba(140,40,45,.1);border-color:rgba(140,40,45,.35)}
 .cards{display:flex;flex-wrap:wrap;gap:12px;white-space:normal}
 .tcard,.tcard-body,.tcard-body>div{white-space:normal}
 .tcard{position:relative;flex:1 1 155px;min-width:144px;max-width:210px;aspect-ratio:1/1.52;border:1px solid var(--line2);

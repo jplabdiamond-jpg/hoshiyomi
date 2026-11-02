@@ -3,6 +3,7 @@
 // → 確定計算 + Cloudflare Workers AI による鑑定文を返す
 import { computeDivination, buildMessages, cleanReading, DISCLAIMER } from '../_lib/reading.js';
 import { ensureSchema } from '../_lib/db.js';
+import { getCalibration, recordPredSignals } from '../_lib/calibration.js';
 import { getCheckoutSession } from '../_lib/stripe.js';
 
 const PAID = new Set(['comprehensive_plus']); // 有料モード
@@ -49,10 +50,16 @@ export async function onRequestPost(context) {
 
   if (!answers) return json({ error: 'answers は必須です' }, 400);
 
+  // 0) 実測較正の重みを取得（④）。総合鑑定のみ・DBがあれば。失敗しても中立で続行
+  let calibWeights = {};
+  if (divination.startsWith('comprehensive') && env.DB) {
+    try { calibWeights = (await getCalibration(env.DB)).weights; } catch { calibWeights = {}; }
+  }
+
   // 1) 確定計算（命式・チャート・カード）
   let computed;
   try {
-    computed = computeDivination(divination, answers);
+    computed = computeDivination(divination, answers, { calibWeights });
   } catch (e) {
     return json({ error: String(e.message || e) }, 400);
   }
@@ -106,6 +113,9 @@ export async function onRequestPost(context) {
         await env.DB.prepare('UPDATE orders SET status = ?, reading_id = ? WHERE id = ?')
           .bind('consumed', readingId, paidOrder.id).run();
       }
+      // ④ 確度に寄与した占術を記録（後日のフィードバックで較正に使う）
+      const used = computed.data && computed.data.foresight && computed.data.foresight.systemsUsed;
+      if (readingId && used && used.length) await recordPredSignals(env.DB, readingId, used);
     } catch { readingId = null; }
   }
 

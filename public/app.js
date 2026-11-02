@@ -689,10 +689,25 @@
     const heat = f.trend.map((t) =>
       `<div class="heat-cell"><div class="heat-box" style="background:${col(t.score)}"></div><div class="heat-y">${String(t.year).slice(2)}</div></div>`
     ).join('');
-    // 合致点（確度・高/中を強調）
+    const confCls = (lv) => (lv === '高' ? 'conf-hi' : lv === '中' ? 'conf-mid' : 'conf-lo');
+    const domChip = (d) => {
+      const arrow = d.pol > 0 ? '↑' : d.pol < 0 ? '↑↓' : '→';
+      const warn = (d.net < 0 && d.pol < 0) ? ' dom-overlap' : '';
+      return `<span class="dom-chip${warn}">${esc(d.domain)}${arrow}</span>`;
+    };
+    // 合致窓（月解像度・日付レンジ＋確度＋領域）＝未来視の核
+    const wins = (f.windows || []).filter((w) => w.systems && w.systems.length).map((w) => {
+      const peak = w.peakLabel ? `<span class="win-peak">${esc(w.peakLabel)}</span>` : '';
+      const doms = (w.domains || []).map(domChip).join('');
+      return `<div class="tl-item ${w.level !== '低' ? 'turn' : ''}">
+        <span class="tl-age">${esc(w.label)}</span>
+        <span class="conf ${confCls(w.level)}">確度${w.level}</span>
+        <span class="tl-note">${esc(w.systems.join('＋'))}（${w.systems.length}系統）が重なる${peak}${doms ? `<span class="win-doms">${doms}</span>` : ''}</span>
+      </div>`;
+    }).join('');
+    // 年単位の合致点（中長期）
     const conv = f.convergence.filter((c) => c.srcCount > 0).map((c) => {
-      const cls = c.level === '高' ? 'conf-hi' : c.level === '中' ? 'conf-mid' : 'conf-lo';
-      return `<div class="tl-item ${c.level !== '低' ? 'turn' : ''}"><span class="tl-age">${c.year}年</span><span class="conf ${cls}">確度${c.level}</span><span class="tl-note">${esc(c.signals.map((s) => s.src).filter((v, i, a) => a.indexOf(v) === i).join('・'))}が示唆</span></div>`;
+      return `<div class="tl-item ${c.level !== '低' ? 'turn' : ''}"><span class="tl-age">${c.year}年</span><span class="conf ${confCls(c.level)}">確度${c.level}</span><span class="tl-note">${esc(c.signals.map((s) => s.src).filter((v, i, a) => a.indexOf(v) === i).join('・'))}が示唆</span></div>`;
     }).join('');
     // 流月（今後6ヶ月）
     const mon = f.months.slice(0, 6).map((m) =>
@@ -703,8 +718,9 @@
       `<div class="tl-item turn"><span class="tl-age">${x.year}年</span><span class="tl-g">${esc(x.name)}</span><span class="tl-note">${esc(x.note)}</span></div>`
     ).join('');
     return `
+      <h4>合致窓（複数の占術が同じ時期を指す「転機の窓」）</h4><div class="timeline">${wins || '<div class="tl-item"><span class="tl-note">今後24ヶ月で強く重なる窓は見当たりません</span></div>'}</div>
       <h4>運気ヒートマップ（今後6年）</h4><div class="heatmap">${heat}</div>
-      <h4>合致点（複数の占術が同じ年を指す＝確度）</h4><div class="timeline">${conv || '<div class="tl-item"><span class="tl-note">目立った合致はありません</span></div>'}</div>
+      ${conv ? `<h4>年単位の合致点（中長期）</h4><div class="timeline">${conv}</div>` : ''}
       ${ms ? `<h4>人生の節目</h4><div class="timeline">${ms}</div>` : ''}
       <h4>流月（今後6ヶ月の運気）</h4><div class="timeline">${mon}</div>`;
   }

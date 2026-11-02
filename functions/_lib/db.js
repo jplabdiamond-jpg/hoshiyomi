@@ -26,6 +26,14 @@ export async function ensureSchema(DB) {
         reading_id TEXT
       )`),
       DB.prepare(`CREATE INDEX IF NOT EXISTS idx_orders_session ON orders(stripe_session_id)`),
+      // ④ 予測較正用：鑑定ごとに確度へ寄与した占術を記録する
+      DB.prepare(`CREATE TABLE IF NOT EXISTS pred_signals (
+        id TEXT PRIMARY KEY,
+        reading_id TEXT, system TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      )`),
+      DB.prepare(`CREATE INDEX IF NOT EXISTS idx_pred_reading ON pred_signals(reading_id)`),
+      DB.prepare(`CREATE INDEX IF NOT EXISTS idx_pred_system ON pred_signals(system)`),
     ]);
     ensured = true;
   } catch {
