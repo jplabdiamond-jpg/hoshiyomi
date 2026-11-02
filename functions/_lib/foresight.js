@@ -5,6 +5,7 @@
 import {
   STEMS, BRANCHES, tenGod, isClash, monthPillarForDate,
 } from './fourpillars.js';
+import { forecastTransits } from './astrology.js';
 
 function reduceNum(n) {
   while (n > 9) n = String(n).split('').reduce((a, d) => a + +d, 0);
@@ -67,6 +68,85 @@ function godClass(g) {
 }
 const patTransit = (body, aspect) => `astro:${body}:${HARD.includes(aspect) ? 'hard' : 'soft'}`;
 
+// 過去の転機カテゴリ → 主な生活領域（答え合わせ用。パターンの領域と一致すれば加点を強める）
+const CAT_DOMAIN = {
+  job: 'キャリア', promotion: 'キャリア', independence: 'キャリア',
+  marriage: '対人', breakup: '対人', family: '対人',
+  health: '健康', money: '金銭', move: '身体安全', other: null,
+};
+// パターン → 代表領域（本人較正の領域一致チェック用）
+function patternDomain(p) {
+  if (p.startsWith('astro:')) { const b = p.split(':')[1]; return b === '土星' ? 'キャリア' : b === '木星' ? 'キャリア' : 'メンタル'; }
+  if (p.startsWith('fp:')) {
+    const g = p.split(':')[2];
+    if (g === '官殺') return 'キャリア'; if (g === '財') return '金銭'; if (g === '印') return 'メンタル';
+    if (g === '比劫') return '金銭'; if (g === '食傷') return '対人'; if (g === '冲') return '身体安全';
+  }
+  if (p.startsWith('num:py8')) return '金銭';
+  return null;
+}
+
+// ある過去の年月に「効いていたパターン」を列挙する（本人の星・命式を過去方向に回す）
+function activePatternsAt(fp, chart, birthYear, year, month) {
+  const dStem = fp.dayStemIdx, dBranch = fp.dayBranchIdx;
+  const pats = new Set();
+  // 占星術：イベント前後±約4ヶ月に正確化したトランジット
+  try {
+    if (chart && chart.planets) {
+      const start = new Date(year, (month || 6) - 1 - 8, 15);
+      const hits = forecastTransits(chart, start, 16);
+      const evT = new Date(year, (month || 6) - 1, 15).getTime();
+      for (const h of hits) {
+        const pk = h.peak ? new Date(h.peak).getTime() : new Date(h.date).getTime();
+        if (Math.abs(pk - evT) <= 125 * 86400000) pats.add(patTransit(h.transit, h.aspect));
+      }
+    }
+  } catch { /* 省略可 */ }
+  // 四柱：流年
+  const ys = ((year - 4) % 10 + 10) % 10, yb = ((year - 4) % 12 + 12) % 12;
+  const yg = tenGod(dStem, ys);
+  if (isClash(yb, dBranch)) pats.add('fp:y:冲');
+  if (['偏官', '正官', '偏財', '正財', '食神', '傷官'].includes(yg)) pats.add(`fp:y:${godClass(yg)}`);
+  // 四柱：流月（月が分かる場合）
+  if (month) {
+    const mp = monthPillarForDate(year, month, 15);
+    const mg = tenGod(dStem, mp.stem);
+    if (isClash(mp.branch, dBranch)) pats.add('fp:m:冲');
+    if (['偏官', '正官'].includes(mg)) pats.add('fp:m:官殺');
+  }
+  // 四柱：大運（その年齢を含む柱）
+  if (fp.daYun) {
+    const age = year - birthYear;
+    const cur = fp.daYun.pillars.find((p) => age >= p.ageStart && age < p.ageEnd);
+    if (cur) pats.add(`fp:dy:${godClass(cur.tenGod)}`);
+  }
+  return pats;
+}
+
+// 過去の転機リスト → パターン別の「本人較正」重み（的中パターンを加点）
+function computePersonalWeights(pastEvents, fp, chart, birthMonth, birthDay, birthYear) {
+  const w = {};
+  let matched = 0;
+  for (const ev of pastEvents) {
+    const year = ev.year, month = ev.month || null;
+    if (!year || year < 1900 || year > 2100) continue;
+    const pats = activePatternsAt(fp, chart, birthYear, year, month);
+    // 数秘パーソナルイヤー
+    const py = personalYear(birthMonth, birthDay, year).number;
+    if ([1, 8, 9].includes(py)) pats.add(`num:py${py}`);
+    const evDomain = CAT_DOMAIN[ev.cat] || null;
+    let any = false;
+    for (const p of pats) {
+      const domMatch = evDomain && patternDomain(p) === evDomain;
+      const factor = domMatch ? 1.15 : 1.08; // 時期一致=1.08、領域も一致=1.15
+      w[p] = Math.min(1.4, (w[p] || 1) * factor);
+      any = true;
+    }
+    if (any) matched++;
+  }
+  return { weights: w, matchedEvents: matched };
+}
+
 // ── ① 日付レンジのラベル化 ──
 function decade(day) { return day <= 10 ? '上旬' : day <= 20 ? '中旬' : '下旬'; }
 function rangeLabel(startISO, endISO, peakISO) {
@@ -93,15 +173,16 @@ function rangeLabel(startISO, endISO, peakISO) {
 // base    : 独立した占術体系が何系統重なるか（合致の強さ）
 // specTable[pattern]   : A 希少度の重み（珍しいパターンほど>1、ほぼ全員に出るパターンは<1）
 // calibWeights[pattern]: C 実測フィードバックの重み（当たりやすいパターンほど>1）
-function confidence(systemsCount, patterns, { transitTight = 0, specTable = {}, calibWeights = {} } = {}) {
+function confidence(systemsCount, patterns, { transitTight = 0, specTable = {}, calibWeights = {}, personalWeights = {} } = {}) {
   const base = systemsCount >= 4 ? 92 : systemsCount === 3 ? 80 : systemsCount === 2 ? 60 : 35;
   let sum = 0, cnt = 0;
   for (const p of patterns) {
-    const s = typeof specTable[p] === 'number' ? specTable[p] : 1;
-    const k = typeof calibWeights[p] === 'number' ? calibWeights[p] : 1;
-    sum += s * k; cnt++;
+    const s = typeof specTable[p] === 'number' ? specTable[p] : 1;   // A 希少度
+    const k = typeof calibWeights[p] === 'number' ? calibWeights[p] : 1; // C 母集団フィードバック
+    const u = typeof personalWeights[p] === 'number' ? personalWeights[p] : 1; // 本人の過去転機で的中したパターン
+    sum += s * k * u; cnt++;
   }
-  const mult = cnt ? Math.max(0.5, Math.min(1.6, sum / cnt)) : 1;
+  const mult = cnt ? Math.max(0.5, Math.min(1.8, sum / cnt)) : 1;
   return Math.round(Math.max(5, Math.min(99, (base + transitTight) * mult)));
 }
 const levelOf = (c) => (c >= 75 ? '高' : c >= 55 ? '中' : '低');
@@ -126,8 +207,14 @@ export function computeForesight(o) {
   const dStem = fp.dayStemIdx, dBranch = fp.dayBranchIdx;
   const nowYear = o.nowYear, nowMonth = o.nowMonth;
   const profileNet = o.profileNet || {};
-  const calibWeights = o.calibWeights || {}; // C: パターン別の実測重み
+  const calibWeights = o.calibWeights || {}; // C: パターン別の実測重み（母集団）
   const specTable = o.specTable || {};       // A: パターン別の希少度重み
+  // 本人較正：過去の転機で実際に効いていたパターンを加点（事後フィードバック不要）
+  const pastEvents = Array.isArray(o.pastEvents) ? o.pastEvents : [];
+  const personal = pastEvents.length
+    ? computePersonalWeights(pastEvents, fp, chart, o.birthMonth, o.birthDay, o.birthYear)
+    : { weights: {}, matchedEvents: 0 };
+  const personalWeights = personal.weights;
 
   // --- 流月（UI表示用=12ヶ月、合致判定用=24ヶ月） ---
   const monthsAll = [];
@@ -199,7 +286,7 @@ export function computeForesight(o) {
     const sig = yearSignals[y] || [];
     const srcs = [...new Set(sig.map((s) => s.sys))];
     const pats = [...new Set(sig.map((s) => s.pattern).filter(Boolean))];
-    const conf = sig.length ? confidence(srcs.length, pats, { specTable, calibWeights }) : 0;
+    const conf = sig.length ? confidence(srcs.length, pats, { specTable, calibWeights, personalWeights }) : 0;
     convergence.push({ year: y, age: y - o.birthYear, count: sig.length, srcCount: srcs.length, conf, level: srcs.length ? levelOf(conf) : '-', signals: sig.map((s) => ({ src: s.sys, label: s.label })) });
   }
 
@@ -236,7 +323,7 @@ export function computeForesight(o) {
     const systems = [...new Set(allSig.map((s) => s.sys))];
     const patterns = [...new Set(allSig.map((s) => s.pattern).filter(Boolean))];
     const transitTight = w.transit ? 6 : 0;
-    const conf = confidence(systems.length, patterns, { transitTight, specTable, calibWeights });
+    const conf = confidence(systems.length, patterns, { transitTight, specTable, calibWeights, personalWeights });
     const domains = mergeDomains(allSig.flatMap((s) => s.domains || []))
       .map((d) => ({ ...d, net: profileNet[d.domain] ?? 0 }));
     // 時期ラベル：トランジット窓があればレンジ、なければ月単位
@@ -280,7 +367,11 @@ export function computeForesight(o) {
     topWindows.filter((w) => w.level !== '低').flatMap((w) => w.patterns || [])
   )];
 
-  return { months, personalYears: pys, milestones, convergence, windows: topWindows, trend, allPatterns, patternsUsed };
+  return {
+    months, personalYears: pys, milestones, convergence, windows: topWindows, trend,
+    allPatterns, patternsUsed,
+    personalized: personal.matchedEvents > 0, matchedEvents: personal.matchedEvents,
+  };
 }
 
 const POLMARK = (p) => (p > 0 ? '追い風' : p < 0 ? '要注意' : '変化');
@@ -296,6 +387,9 @@ function domainPhrase(domains) {
 export function summarizeForesight(f) {
   const lines = [];
 
+  if (f.personalized) {
+    lines.push(`【本人較正あり】相談者が申告した過去の転機（${f.matchedEvents}件）と星回りを照合し、実際に当たっていたパターンの確度を本人仕様に補正済み。確度は母集団の目安より一段あなた向けに最適化されている、と踏まえて語ってよい。`);
+  }
   lines.push('【最重要＝合致窓：複数の占術が同じ時期を指し示す「転機の窓」。確度順ではなく時期順。確度が高い窓ほど優先的に語ること】');
   if (!f.windows || !f.windows.length) {
     lines.push('・今後24ヶ月で複数系統が強く重なる窓は見当たりません（大きな転機より、日々の積み上げが効く時期）。');

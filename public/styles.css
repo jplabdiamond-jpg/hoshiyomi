@@ -149,6 +149,41 @@ body{
 .dom-chip{display:inline-block;margin:2px 4px 0 0;padding:1px 7px;border-radius:2px;font-size:10.5px;
   color:var(--gold-deep);background:rgba(201,168,106,.1);border:1px solid var(--line2)}
 .dom-chip.dom-overlap{color:var(--oxblood);background:rgba(140,40,45,.1);border-color:rgba(140,40,45,.35)}
+/* 過去の転機 入力 */
+.events-box{display:flex;flex-direction:column;gap:10px}
+.ev-list{display:flex;flex-direction:column;gap:6px}
+.ev-item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 11px;border-radius:3px;
+  background:rgba(201,168,106,.08);border:1px solid rgba(201,168,106,.3);font-size:13px}
+.ev-del{background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;line-height:1;padding:0 4px}
+.ev-del:hover{color:var(--oxblood)}
+.ev-form{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.ev-when{display:flex;gap:8px;flex:1 1 auto}
+.ev-cat,.ev-year,.ev-month{background:rgba(10,12,21,.6);color:var(--ink,#eee);border:1px solid var(--line2);
+  border-radius:4px;padding:9px 10px;font-size:14px;font-family:inherit}
+.ev-cat{flex:1 1 140px}
+.ev-year{flex:1 1 110px;min-width:92px}
+.ev-month{flex:0 0 auto}
+.ev-year.err{border-color:var(--oxblood)}
+.ev-add{flex:1 1 100%;background:rgba(201,168,106,.12);color:var(--gold);border:1px solid rgba(201,168,106,.4);
+  border-radius:4px;padding:9px;font-size:13.5px;cursor:pointer;font-family:inherit}
+.ev-add:disabled{opacity:.5;cursor:default}
+.ev-actions{display:flex;gap:9px;flex-wrap:wrap}
+.ev-done{flex:1 1 auto;background:var(--gold);color:#140f06;border:none;border-radius:4px;padding:10px 14px;
+  font-weight:700;font-size:14px;cursor:pointer;font-family:inherit}
+.ev-skip{background:none;border:1px solid var(--line2);color:var(--muted);border-radius:4px;padding:10px 14px;
+  font-size:13px;cursor:pointer;font-family:inherit}
+/* 情報ポップアップ */
+.sv-modal-ov{position:fixed;inset:0;z-index:999;display:flex;align-items:center;justify-content:center;
+  background:rgba(4,5,10,.72);backdrop-filter:blur(3px);padding:24px;animation:svFade .2s ease}
+@keyframes svFade{from{opacity:0}to{opacity:1}}
+.sv-modal{max-width:340px;width:100%;background:linear-gradient(180deg,#14121d,#0c0b14);
+  border:1px solid rgba(201,168,106,.4);border-radius:10px;padding:26px 24px;text-align:center;
+  box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.sv-modal-ic{color:var(--gold);width:40px;height:40px;margin:0 auto 12px}
+.sv-modal-ic svg{width:100%;height:100%}
+.sv-modal-body{color:var(--ink,#eee);font-size:15px;line-height:1.7;font-family:var(--serif);margin-bottom:20px}
+.sv-modal-ok{background:var(--gold);color:#140f06;border:none;border-radius:5px;padding:11px 28px;
+  font-weight:700;font-size:14px;cursor:pointer;font-family:inherit}
 .cards{display:flex;flex-wrap:wrap;gap:12px;white-space:normal}
 .tcard,.tcard-body,.tcard-body>div{white-space:normal}
 .tcard{position:relative;flex:1 1 155px;min-width:144px;max-width:210px;aspect-ratio:1/1.52;border:1px solid var(--line2);

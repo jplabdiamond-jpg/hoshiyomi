@@ -12,6 +12,19 @@ import { getDivination, resolveCity, parseDate, parseTime } from './divinations.
 
 const JP_TZ = 540; // 日本標準時（分）
 
+// 過去の転機入力を正規化：[{cat, year, month?}] の配列にする（文字列/配列どちらでも受ける）
+function parsePastEvents(raw) {
+  if (!raw) return [];
+  let arr = raw;
+  if (typeof raw === 'string') { try { arr = JSON.parse(raw); } catch { return []; } }
+  if (!Array.isArray(arr)) return [];
+  return arr.map((e) => ({
+    cat: (e && e.cat) ? String(e.cat) : 'other',
+    year: Number(e && e.year) || 0,
+    month: e && e.month ? Number(e.month) : null,
+  })).filter((e) => e.year >= 1900 && e.year <= 2100).slice(0, 3);
+}
+
 // 入力(answers) → 計算結果 + LLM用素材
 // opts.calibWeights: 占術→実測重み（④）。無ければ全て中立（1.0）。
 export function computeDivination(key, answers, opts = {}) {
@@ -111,6 +124,7 @@ export function computeDivination(key, answers, opts = {}) {
       fp, chart, birthYear: d.year, birthMonth: d.month, birthDay: d.day,
       gender: answers.gender, nowYear: now.getFullYear(), nowMonth: now.getMonth() + 1,
       profileNet: profile.net, calibWeights: opts.calibWeights || {}, specTable: opts.specTable || {},
+      pastEvents: parsePastEvents(answers.pastEvents),
     });
 
     // 本人の状況（占術の入力ではなく、アドバイスを具体化する文脈）

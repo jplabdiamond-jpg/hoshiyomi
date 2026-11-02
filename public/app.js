@@ -166,10 +166,27 @@
     wrap.querySelectorAll('.pick').forEach((b) => b.onclick = () => chooseDivination(b.dataset.key));
   }
 
+  function showInfoPopup(text) {
+    return new Promise((res) => {
+      const ov = document.createElement('div');
+      ov.className = 'sv-modal-ov';
+      ov.innerHTML = `<div class="sv-modal" role="dialog" aria-modal="true">
+        <div class="sv-modal-ic">${SIGIL}</div>
+        <div class="sv-modal-body">${esc(text)}</div>
+        <button class="sv-modal-ok" type="button">始める</button></div>`;
+      document.body.appendChild(ov);
+      const close = () => { ov.remove(); res(); };
+      ov.querySelector('.sv-modal-ok').onclick = close;
+      ov.addEventListener('click', (e) => { if (e.target === ov) close(); });
+    });
+  }
+
   async function chooseDivination(key) {
     const d = DIVS.find((x) => x.key === key); if (!d) return;
     state.div = d; state.fields = d.fields; state.idx = 0; state.answers = {}; state.stage = 'collecting';
     bubble('user', esc(d.ja));
+    // 詳細プラン（有料）は入力の価値を先に伝える
+    if (d.price) await showInfoPopup('項目を埋めるほど精度の高い鑑定が可能です。');
     await botSay(`承知しました。<b>${esc(d.ja)}</b>で占います。<br>いくつか教えてくださいね。`, 500);
     if (d.privacyNote) await botSay(`<span style="font-size:13px;color:var(--muted)">🔒 ${esc(d.privacyNote)}</span>`, 400);
     askNext();
@@ -201,6 +218,62 @@
         input.disabled = false; input.placeholder = 'メッセージを入力…';
         answerField(b.dataset.value, b.dataset.label);
       });
+    } else if (f.type === 'events') {
+      // 過去の転機：カテゴリ＋年（月は任意）を最大 maxItems 件。答え合わせで本人較正に使う
+      input.disabled = true; input.placeholder = '下のフォームで入力してください'; clearQuick(); showInput(false);
+      const max = f.maxItems || 3;
+      const yearNow = new Date().getFullYear();
+      const collected = [];
+      const labelOf = (v) => (f.options.find((o) => o.value === v) || {}).label || v;
+      const wrap = document.createElement('div'); wrap.className = 'msg bot';
+      const optsHtml = f.options.map((o) => `<option value="${esc(o.value)}">${esc(o.label)}</option>`).join('');
+      const monHtml = Array.from({ length: 12 }, (_, i) => `<option value="${i + 1}">${i + 1}月</option>`).join('');
+      wrap.innerHTML = `<div class="avatar">${SIGIL}</div><div class="bubble" style="width:100%">
+        <div class="events-box">
+          <div class="ev-list"></div>
+          <div class="ev-form">
+            <select class="ev-cat">${optsHtml}</select>
+            <div class="ev-when">
+              <input class="ev-year" type="number" inputmode="numeric" placeholder="年（例 2019）" min="1900" max="${yearNow}">
+              <select class="ev-month"><option value="">月（任意）</option>${monHtml}</select>
+            </div>
+            <button class="ev-add" type="button">＋ この転機を追加</button>
+          </div>
+          <div class="ev-actions">
+            <button class="ev-done" type="button">この内容で進む</button>
+            <button class="ev-skip ghost" type="button">入力せずに進む</button>
+          </div>
+        </div></div>`;
+      chat.appendChild(wrap); scroll();
+      const listEl = wrap.querySelector('.ev-list');
+      const catEl = wrap.querySelector('.ev-cat'), yearEl = wrap.querySelector('.ev-year'), monEl = wrap.querySelector('.ev-month');
+      const addBtn = wrap.querySelector('.ev-add');
+      const render = () => {
+        listEl.innerHTML = collected.map((e, i) =>
+          `<div class="ev-item"><span>${esc(labelOf(e.cat))}／${e.year}年${e.month ? e.month + '月' : ''}</span><button type="button" class="ev-del" data-i="${i}">×</button></div>`
+        ).join('');
+        listEl.querySelectorAll('.ev-del').forEach((b) => b.onclick = () => { collected.splice(+b.dataset.i, 1); render(); });
+        addBtn.disabled = collected.length >= max;
+        addBtn.textContent = collected.length >= max ? `上限 ${max} 件です` : '＋ この転機を追加';
+      };
+      addBtn.onclick = () => {
+        const y = parseInt(yearEl.value, 10);
+        if (!y || y < 1900 || y > yearNow) { yearEl.classList.add('err'); yearEl.focus(); return; }
+        yearEl.classList.remove('err');
+        if (collected.length >= max) return;
+        collected.push({ cat: catEl.value, year: y, month: monEl.value ? +monEl.value : null });
+        yearEl.value = ''; monEl.value = ''; render();
+      };
+      const finish = (arr) => {
+        wrap.querySelector('.ev-form').style.display = 'none';
+        wrap.querySelector('.ev-actions').style.display = 'none';
+        input.disabled = false; input.placeholder = 'メッセージを入力…';
+        const disp = arr.length ? arr.map((e) => `${labelOf(e.cat)}(${e.year}年${e.month ? e.month + '月' : ''})`).join('、') : 'スキップ';
+        answerField(arr, disp);
+      };
+      wrap.querySelector('.ev-done').onclick = () => finish(collected.slice());
+      wrap.querySelector('.ev-skip').onclick = () => finish([]);
+      render();
     } else if (f.type === 'select') {
       input.disabled = true; input.placeholder = '下から選んでください'; showInput(false);
       const chips = f.options.map((o) => ({
