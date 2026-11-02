@@ -36,9 +36,25 @@ function dataUrlToBytes(u) {
 }
 
 // 写真から手相の特徴を抽出。利用可能なビジョンモデルを順に試す。
-async function extractPalmFeatures(env, dataUrl) {
+// forceModel を渡すと、そのモデルだけを使い（診断用）、失敗時は生エラーを投げる。
+async function extractPalmFeatures(env, dataUrl, forceModel) {
+  const kindOf = (m) => (m.includes('llava') || m.includes('uform') ? 'llava' : 'messages');
+  if (forceModel) {
+    const c = { model: forceModel, kind: kindOf(forceModel) };
+    let text = '';
+    if (c.kind === 'messages') {
+      const r = await env.AI.run(c.model, { messages: [{ role: 'user', content: [
+        { type: 'text', text: PALM_VISION_PROMPT }, { type: 'image_url', image_url: { url: dataUrl } },
+      ] }], max_tokens: 768, temperature: 0.2 });
+      text = (r && (r.response || r.result || '')).trim();
+    } else {
+      const r = await env.AI.run(c.model, { image: dataUrlToBytes(dataUrl), prompt: PALM_VISION_PROMPT, max_tokens: 768 });
+      text = (r && (r.description || r.response || r.result || '')).trim();
+    }
+    return { model: c.model, text };
+  }
   const pref = env.PALM_VISION_MODEL
-    ? [{ model: env.PALM_VISION_MODEL, kind: env.PALM_VISION_MODEL.includes('llava') || env.PALM_VISION_MODEL.includes('uform') ? 'llava' : 'messages' }]
+    ? [{ model: env.PALM_VISION_MODEL, kind: kindOf(env.PALM_VISION_MODEL) }]
     : [];
   const list = [...pref, ...VISION_CANDIDATES.filter((c) => !pref.some((p) => p.model === c.model))];
   let lastErr = null;
@@ -118,6 +134,15 @@ export async function onRequestPost(context) {
       return json({ error: '手のひらの写真（JPEG/PNG）をアップロードしてください' }, 400);
     }
     if (!env.AI) return json({ error: '画像の解析が利用できません（AI未設定）' }, 503);
+    // 診断: body.visionModel を指定するとそのモデルだけを試し、生の結果/エラーを返す
+    if (body.visionModel) {
+      try {
+        const v = await extractPalmFeatures(env, img, body.visionModel);
+        return json({ diag: true, model: v.model, textHead: (v.text || '').slice(0, 200) });
+      } catch (e) {
+        return json({ diag: true, model: body.visionModel, error: String(e.message || e) }, 200);
+      }
+    }
     try {
       const v = await extractPalmFeatures(env, img);
       palmFeatures = v.text; palmVisionModel = v.model;
