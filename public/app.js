@@ -497,7 +497,13 @@
           ${fbBlock(data.readingId)}
         </div></div>`;
     }
-    chat.appendChild(wrap); scroll();
+    chat.appendChild(wrap);
+    if (isTarot) {
+      // 結果はタイトル（上端）から見えるようにスクロール
+      requestAnimationFrame(() => setTimeout(() => wrap.scrollIntoView({ block: 'start', behavior: 'smooth' }), 60));
+    } else {
+      scroll();
+    }
     const fb = wrap.querySelector('.fb');
     if (fb) wireFeedback(fb);
     // 画像の無い札はSVG絵柄にフォールバック
