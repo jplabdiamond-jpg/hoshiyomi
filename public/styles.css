@@ -358,7 +358,15 @@ body{
 .card-marquee{position:relative;left:50%;width:100vw;margin-left:-50vw;overflow:hidden;padding:10px 0 12px}
 .cm-track{display:flex;gap:16px;width:max-content;will-change:transform;animation:cmSlide linear infinite}
 @keyframes cmSlide{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-.card-marquee .tcard{flex:0 0 172px;width:172px;margin:0}
+/* マーキーのカードは全体を表示（テキストは下に配置） */
+.card-marquee .tcard{flex:0 0 172px;width:172px;margin:0;aspect-ratio:auto;border:none;box-shadow:none;background:none;overflow:visible;display:flex;flex-direction:column}
+.card-marquee .tcard-card{position:relative;width:100%;aspect-ratio:1/1.78;border-radius:7px;overflow:hidden;border:1px solid var(--line2);box-shadow:0 8px 22px rgba(0,0,0,.5)}
+.card-marquee .tcard-img{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;background:none}
+.card-marquee .tcard-img.rev{transform:rotate(180deg)}
+.card-marquee .tcard-art{position:absolute;inset:0}
+.card-marquee .tcard-body{position:static;left:auto;right:auto;bottom:auto;padding:8px 2px 0;text-align:center}
+.card-marquee .tcard-body .nm{color:#efe6d4;text-shadow:none}
+.card-marquee .tcard-body .kw{color:var(--muted);text-shadow:none}
 
 /* 古代紙：中央から左右へ広がる */
 .scroll-wrap{position:relative;margin:8px 0 18px;padding:0 4px}

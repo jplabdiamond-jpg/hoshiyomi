@@ -452,7 +452,8 @@
     const art = (window.SVTarotArt && SVTarotArt.cardArt) ? SVTarotArt.cardArt(c) : '';
     const kw = Array.isArray(c.keywords) ? esc(c.keywords.join('・')) : '';
     const img = id ? `<img class="tcard-img${rev ? ' rev' : ''}" src="/cards/${id}.webp" alt="">` : '';
-    return `<div class="tcard"><div class="tcard-art${rev ? ' rev' : ''}">${art}</div>${img}<div class="tcard-ov"></div>
+    return `<div class="tcard">
+      <div class="tcard-card"><div class="tcard-art${rev ? ' rev' : ''}">${art}</div>${img}</div>
       <div class="tcard-body"><div class="pos">${esc(c.position)}</div><div class="nm">${esc(c.name)}</div>
       <div class="or ${rev ? 'rev' : ''}">${esc(c.orientation)}</div><div class="kw">${kw}</div></div></div>`;
   }
