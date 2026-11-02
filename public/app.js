@@ -98,6 +98,8 @@
 
   // ---------- メッセージ描画 ----------
   function scroll() { chat.scrollTop = chat.scrollHeight; }
+  // フッター（入力欄・クイックボタン）の高さが変わった後に確実に最下部へ寄せる
+  function scrollSoon() { requestAnimationFrame(() => requestAnimationFrame(scroll)); }
   function bubble(role, html) {
     const m = document.createElement('div');
     m.className = `msg ${role}`;
@@ -123,13 +125,19 @@
       b.textContent = it.label; b.onclick = () => it.onClick();
       quick.appendChild(b);
     }
+    scrollSoon(); // ボタンが増えてフッターが高くなった分、最新コメントを隠さないよう再スクロール
   }
-  function clearQuick() { quick.innerHTML = ''; }
+  function clearQuick() { quick.innerHTML = ''; scrollSoon(); }
   // テキスト入力が必要なときだけ入力欄を表示する
   function showInput(on) {
     form.classList.toggle('no-input', !on);
-    // 入力欄が出て高さが変わると直前のメッセージが隠れるので再スクロール
-    if (on) requestAnimationFrame(() => requestAnimationFrame(scroll));
+    scrollSoon(); // 入力欄の出し入れで高さが変わるたびに最下部へ寄せ直す
+  }
+  // モバイルでキーボードが開閉してビューポートが変わったときも最新コメントを見せ続ける
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', () => {
+      if (chat.scrollHeight - chat.scrollTop - chat.clientHeight < 160) scroll();
+    });
   }
   form.classList.add('no-input');
 
