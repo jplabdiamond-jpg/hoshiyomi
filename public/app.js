@@ -8,6 +8,7 @@
     tarot: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3.5" y="6" width="8.5" height="12.5" rx="1" transform="rotate(-9 7.75 12.25)"/><rect x="11" y="5" width="8.5" height="12.5" rx="1" transform="rotate(9 15.25 11.25)"/></svg>`,
     seimei: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="4" y="4" width="16" height="16" rx="1"/><path d="M12 7.5v9M8.5 11.5c1.6 0 3.5-1 3.5-4M15.5 11.5c-1.6 0-3.5-1-3.5-4" stroke-width="1"/></svg>`,
     numerology: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg>`,
+    palm: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"><path d="M8 11V5.3a1.3 1.3 0 0 1 2.6 0V10M10.6 10V4.3a1.3 1.3 0 0 1 2.6 0V10M13.2 10V5.1a1.3 1.3 0 0 1 2.6 0V12"/><path d="M8 11V8.2a1.3 1.3 0 0 0-2.6 0v5.3c0 3.3 2.2 6 5.6 6 3.1 0 5.5-2.1 5.5-5.4V9.2a1.3 1.3 0 0 0-2.6 0"/></svg>`,
     comprehensive_plus: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.1"><path d="M2.5 12C5.3 8.3 8.4 6.7 12 6.7S18.7 8.3 21.5 12C18.7 15.7 15.6 17.3 12 17.3S5.3 15.7 2.5 12Z"/><circle cx="12" cy="12" r="2.5"/><path d="M12 9.3l.6 2.1 2.1.6-2.1.6-.6 2.1-.6-2.1-2.1-.6 2.1-.6z" fill="currentColor" stroke="none"/></svg>`,
   };
   // タロット裏面の紋章（太陽＋瞳＋星）
@@ -114,6 +115,24 @@
   }
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  // 画像を端末内で縮小し JPEG dataURL にする（アップロード容量を抑える）
+  function downscaleImage(file, maxDim, quality) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const im = new Image();
+      im.onload = () => {
+        URL.revokeObjectURL(url);
+        let w = im.naturalWidth, h = im.naturalHeight;
+        const scale = Math.min(1, maxDim / Math.max(w, h));
+        w = Math.max(1, Math.round(w * scale)); h = Math.max(1, Math.round(h * scale));
+        const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+        cv.getContext('2d').drawImage(im, 0, 0, w, h);
+        resolve(cv.toDataURL('image/jpeg', quality));
+      };
+      im.onerror = () => { URL.revokeObjectURL(url); reject(new Error('load')); };
+      im.src = url;
+    });
+  }
   async function botSay(html, delay = 500) {
     const t = typing(); await wait(delay); t.remove(); return bubble('bot', html);
   }
@@ -226,6 +245,44 @@
         input.disabled = false; input.placeholder = 'メッセージを入力…';
         answerField(b.dataset.value, b.dataset.label);
       });
+    } else if (f.type === 'image') {
+      // 写真アップロード（手相など）。端末内で縮小してからdataURLで送る
+      input.disabled = true; input.placeholder = '写真を選んでください'; clearQuick(); showInput(false);
+      const wrap = document.createElement('div'); wrap.className = 'msg bot';
+      wrap.innerHTML = `<div class="avatar">${SIGIL}</div><div class="bubble" style="width:100%">
+        <div class="img-box">
+          <label class="img-pick">
+            <input type="file" accept="image/*" capture="environment" hidden>
+            <span class="img-pick-ic">📷</span><span>写真を撮る / 選ぶ</span>
+          </label>
+          <div class="img-preview" hidden><img alt="プレビュー"><button type="button" class="img-redo ghost">選び直す</button></div>
+          <div class="img-actions" hidden><button type="button" class="img-go">この写真で占う</button></div>
+          <div class="img-err" hidden></div>
+        </div></div>`;
+      chat.appendChild(wrap); scroll();
+      const fileEl = wrap.querySelector('input[type=file]');
+      const prev = wrap.querySelector('.img-preview'), prevImg = prev.querySelector('img');
+      const actions = wrap.querySelector('.img-actions'), errEl = wrap.querySelector('.img-err');
+      const pick = wrap.querySelector('.img-pick');
+      let dataUrl = null;
+      const showErr = (m) => { errEl.textContent = m; errEl.hidden = false; };
+      fileEl.onchange = async () => {
+        errEl.hidden = true;
+        const file = fileEl.files && fileEl.files[0]; if (!file) return;
+        if (!/^image\//.test(file.type)) { showErr('画像ファイルを選んでください。'); return; }
+        try {
+          dataUrl = await downscaleImage(file, 1024, 0.85);
+          prevImg.src = dataUrl; prev.hidden = false; actions.hidden = false; pick.style.display = 'none'; scrollSoon();
+        } catch { showErr('この画像を読み込めませんでした。別の写真でお試しください。'); }
+      };
+      wrap.querySelector('.img-redo').onclick = () => { dataUrl = null; prev.hidden = true; actions.hidden = true; pick.style.display = ''; fileEl.value = ''; scrollSoon(); };
+      wrap.querySelector('.img-go').onclick = () => {
+        if (!dataUrl) return;
+        actions.hidden = true; pick.style.display = 'none';
+        input.disabled = false; input.placeholder = 'メッセージを入力…';
+        bubble('user', '<img class="up-thumb" alt="アップロードした写真" src="' + dataUrl + '">');
+        state.answers[f.key] = dataUrl; state.idx++; clearQuick(); askNext();
+      };
     } else if (f.type === 'events') {
       // 過去の転機：カテゴリ＋年（月は任意）を最大 maxItems 件。答え合わせで本人較正に使う
       input.disabled = true; input.placeholder = '下のフォームで入力してください'; clearQuick(); showInput(false);

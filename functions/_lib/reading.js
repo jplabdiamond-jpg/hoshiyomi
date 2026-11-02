@@ -94,6 +94,21 @@ export function computeDivination(key, answers, opts = {}) {
     return { title: '数秘術', data: res, material: summarizeNumerology(res), meta: {} };
   }
 
+  if (key === 'palm') {
+    // 画像からの特徴抽出（ビジョンモデルの結果）は opts.features で受け取る
+    const features = (opts.features || '').trim();
+    const handLabel = answers.hand === 'right' ? '右手' : answers.hand === 'left' ? '左手' : '不明';
+    const ctx = [`観察した手: ${handLabel}`];
+    if (answers.question) ctx.push(`相談者が気にしていること: ${answers.question}`);
+    const material = `《手相の観察（アップロードされた写真から読み取れた特徴）》\n${features || '（特徴を読み取れませんでした）'}\n\n《文脈》\n${ctx.join('\n')}`;
+    return {
+      title: '手相',
+      data: { features, hand: answers.hand || null, question: answers.question || null },
+      material,
+      meta: { hand: answers.hand || null },
+    };
+  }
+
   if (key === 'comprehensive' || key === 'comprehensive_plus') {
     const d = parseDate(answers.birthDate);
     if (!d) throw new Error('生年月日を読み取れませんでした');
@@ -214,6 +229,15 @@ export function buildMessages(key, computed, answers) {
       '■ 持ち味と人生のテーマ\n' +
       '■ これからどう活かすか（具体的な行動を複数、場面つきで）\n' +
       '全体で500〜700字程度。';
+  } else if (key === 'palm') {
+    instruction =
+      '手相の鑑定文を作ってください。「手相の観察」データ（写真から読み取れた線・手の形の特徴）だけを根拠にし、' +
+      '観察されていない線や特徴を創作しないこと（写真に写っていないものは断定しない）。次の見出しで構成します。\n' +
+      '■ 手に表れたあなた（手の形や主要な線＝生命線・知能線・感情線などから、人柄や気質を日常語で。手相用語は必ずその場で一言説明する）\n' +
+      '■ 線が語る運の流れ（観察された線の長さ・濃さ・カーブ・運命線や太陽線などの有無から、エネルギー・仕事運・対人や愛情の傾向・今後の流れを。写真から読めた範囲で具体的に。読み取れなかった点は無理に語らない）\n' +
+      '■ これから活かすとよいこと（相談内容があればそれに寄せて、今日から取れる具体的な一歩を2〜3つ、場面つきで）\n' +
+      '全体で600〜800字程度。手相は生き方や心がけで変わっていくものとして、温かく前向きに、断定しすぎずに書くこと。' +
+      'もし観察データが「手のひらがはっきり写っていない」旨を示す場合は、無理に占わず、明るい場所で手のひら全体を撮り直すと精度が上がる、とやさしく案内する一文にとどめること。';
   } else if (key === 'comprehensive' || key === 'comprehensive_plus') {
     instruction =
       'これは占い・統計・風水を統合する「総合鑑定」です。あなたは複数の体系を同時に読み解ける熟練の鑑定士であり、' +
@@ -255,6 +279,7 @@ const EXPECTED_HEADINGS = {
   tarot: ['カードが教えてくれること', 'これから意識するとよいこと'],
   seimei: ['名前が示すあなた', '強みと気をつけたい面', 'これからどう活かすか'],
   numerology: ['あなたの本質', '持ち味と人生のテーマ', 'これからどう活かすか'],
+  palm: ['手に表れたあなた', '線が語る運の流れ', 'これから活かすとよいこと'],
   comprehensive: ['総合的に見たあなた', '相談テーマへの見立て', 'これからの見通しと転機', '分野別のリスクと対策', '推奨行動とラッキー方位'],
 };
 

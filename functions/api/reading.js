@@ -10,6 +10,29 @@ import { getCheckoutSession } from '../_lib/stripe.js';
 const PAID = new Set(['comprehensive_plus']); // 有料モード
 
 const DEFAULT_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
+const DEFAULT_VISION_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
+
+const PALM_VISION_PROMPT =
+  'これは手相鑑定のための手のひらの写真です。写真から視覚的に読み取れる手相の特徴だけを、日本語で簡潔な箇条書きで説明してください。' +
+  '推測で線を作らず、実際に見える範囲のみを述べること。観点: ①手全体の形と指の長さの印象 ②生命線・知能線(頭脳線)・感情線・運命線・太陽線・結婚線などの主要な線が「見えるかどうか」、見えるものについては長さ・濃さ・はっきりさ・カーブ・切れ目や枝分かれ・島の有無 ③手のひらのふくらみ（丘）の印象。' +
+  'もし手のひらがはっきり写っていない、または手の写真でない場合は、必ず先頭に「[NOT_PALM]」とだけ書き、続けて理由を一言添えること。';
+
+// 写真から手相の特徴を抽出（ビジョンモデル）
+async function extractPalmFeatures(env, dataUrl) {
+  const model = env.PALM_VISION_MODEL || DEFAULT_VISION_MODEL;
+  const resp = await env.AI.run(model, {
+    messages: [{
+      role: 'user',
+      content: [
+        { type: 'text', text: PALM_VISION_PROMPT },
+        { type: 'image_url', image_url: { url: dataUrl } },
+      ],
+    }],
+    max_tokens: 768,
+    temperature: 0.2,
+  });
+  return { model, text: (resp && (resp.response || resp.result || '')).trim() };
+}
 
 const json = (obj, status = 200) =>
   new Response(JSON.stringify(obj), {
@@ -57,10 +80,34 @@ export async function onRequestPost(context) {
     try { calibWeights = (await getCalibration(env.DB)).weights; } catch { calibWeights = {}; }
   }
 
-  // 1) 確定計算（命式・チャート・カード）
+  // 0.5) 手相：アップロードされた写真から特徴を抽出（ビジョンモデル）
+  let palmFeatures = null, palmVisionModel = null;
+  if (divination === 'palm') {
+    const img = answers && answers.palmImage;
+    if (!img || typeof img !== 'string' || !/^data:image\/(png|jpe?g|webp);base64,/i.test(img)) {
+      return json({ error: '手のひらの写真（JPEG/PNG）をアップロードしてください' }, 400);
+    }
+    if (!env.AI) return json({ error: '画像の解析が利用できません（AI未設定）' }, 503);
+    try {
+      const v = await extractPalmFeatures(env, img);
+      palmFeatures = v.text; palmVisionModel = v.model;
+    } catch (e) {
+      return json({ error: '画像の解析に失敗しました。明るい場所で撮り直してお試しください。', detail: String(e.message || e) }, 200);
+    }
+    // 手のひらとして読み取れない場合は、鑑定せず撮り直しを案内
+    if (/^\s*\[NOT_PALM\]/.test(palmFeatures)) {
+      return json({
+        divination, title: '手相', data: {}, meta: {},
+        reading: '手のひらがはっきり読み取れませんでした。明るい場所で、手のひら全体（指先まで）がはっきり写るように撮り直していただけますか。手を少し広げ、影が入らないようにすると占いやすくなります。',
+        disclaimer: DISCLAIMER, model: palmVisionModel, readingId: null,
+      });
+    }
+  }
+
+  // 1) 確定計算（命式・チャート・カード／手相は特徴テキストを材料化）
   let computed;
   try {
-    computed = computeDivination(divination, answers, { calibWeights, specTable: SPEC });
+    computed = computeDivination(divination, answers, { calibWeights, specTable: SPEC, features: palmFeatures });
   } catch (e) {
     return json({ error: String(e.message || e) }, 400);
   }
@@ -102,11 +149,13 @@ export async function onRequestPost(context) {
     try {
       await ensureSchema(env.DB);
       readingId = crypto.randomUUID();
+      // 画像のbase64は保存しない（プライバシー・容量）。手相は特徴テキストのみ残す
+      const storeAnswers = divination === 'palm' ? { ...answers, palmImage: '[image omitted]' } : answers;
       await env.DB.prepare(
         'INSERT INTO readings (id, anon_id, divination, input_json, summary, model) VALUES (?, ?, ?, ?, ?, ?)'
       ).bind(
         readingId, (body.anonId || null), divination,
-        JSON.stringify(answers).slice(0, 4000),
+        JSON.stringify(storeAnswers).slice(0, 4000),
         computed.material.slice(0, 4000), model
       ).run();
       // 有料注文は「使用済み」にして二重利用を防ぐ
