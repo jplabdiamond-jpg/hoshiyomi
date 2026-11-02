@@ -126,7 +126,11 @@
   }
   function clearQuick() { quick.innerHTML = ''; }
   // テキスト入力が必要なときだけ入力欄を表示する
-  function showInput(on) { form.classList.toggle('no-input', !on); }
+  function showInput(on) {
+    form.classList.toggle('no-input', !on);
+    // 入力欄が出て高さが変わると直前のメッセージが隠れるので再スクロール
+    if (on) requestAnimationFrame(() => requestAnimationFrame(scroll));
+  }
   form.classList.add('no-input');
 
   // ---------- 会話フロー ----------
