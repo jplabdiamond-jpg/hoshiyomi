@@ -65,19 +65,19 @@ async function runVision(env, dataUrl, promptText, maxTokens = 768) {
   throw lastErr || new Error('利用可能なビジョンモデルがありません');
 }
 
-// 厳格判定：手のひらがはっきり写っているか（手以外は弾く）
+// 厳格判定：写っている主被写体を一語で答えさせる（「手のひらか？」はモデルが"はい"に偏るため不可）。
 const PALM_CLASSIFY_PROMPT =
-  'この画像を判定してください。「人間の手のひら」が、手相を読めるくらいはっきり写っていますか？\n' +
-  '次の場合はすべて「いいえ」です: 手以外（風景・物・動物・食べ物・文字・画面など）／顔や人物全体／手の甲だけで手のひらの線が見えない／手のひらが小さすぎる・暗い・ぶれて線が読めない。\n' +
-  '手のひら（指と手相の線）がはっきり確認できる場合のみ「はい」。\n' +
-  '回答は「はい」または「いいえ」の一語だけ。説明や描写は一切しないこと。';
+  'この写真に写っている主な被写体は何ですか。最も当てはまるものを、短い日本語の名詞ひとつだけで答えてください。' +
+  '例: 手のひら / 手の甲 / 風景 / 空 / 文字 / 人の顔 / 料理 / 動物 / 建物 / 画面 / 物。' +
+  '説明や文章は書かず、名詞ひとつだけを答えること。';
 
-// 手のひらか判定（true=手のひら）。判定不能や曖昧は false（＝弾く）側に倒す。
+// 手のひらか判定（true=手のひらのみ）。手の甲・それ以外・曖昧はすべて false（＝弾く）。
 async function classifyPalm(env, dataUrl) {
-  const { text } = await runVision(env, dataUrl, PALM_CLASSIFY_PROMPT, 16);
-  const hasYes = /はい|\byes\b/i.test(text);
-  const hasNo = /いいえ|\bno\b/i.test(text);
-  return { isPalm: hasYes && !hasNo, raw: text };
+  const { text } = await runVision(env, dataUrl, PALM_CLASSIFY_PROMPT, 24);
+  const t = (text || '').toLowerCase();
+  const backOrOther = /甲|背|back/.test(t);
+  const isPalm = !backOrOther && (/手のひら|掌|手相|ての?ひら|palm/.test(t) || (/(^|[^の])手|hand/.test(t) && !/甲|背/.test(t)));
+  return { isPalm, raw: text };
 }
 
 // 写真から手相の特徴を抽出
