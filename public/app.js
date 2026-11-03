@@ -601,6 +601,11 @@
   }
 
   // 全幅で左へ流れループするカード列
+  // 少数枚（1〜3枚）はループ・スクロールせず、全カードを画面内に静的配置する
+  function tarotStatic(cards) {
+    if (!cards.length) return '';
+    return `<div class="card-row" data-count="${cards.length}">${cards.map(tarotTile).join('')}</div>`;
+  }
   function tarotMarquee(cards) {
     if (!cards.length) return '';
     const tiles = cards.map(tarotTile);
@@ -622,7 +627,7 @@
       wrap.innerHTML = `<div class="bubble" style="width:100%;padding:0;background:transparent;border:none;box-shadow:none">
         <div class="result tarot-result">
           <div class="rhead">${esc(data.title)}の鑑定</div>
-          ${tarotMarquee(cards)}
+          ${cards.length <= 3 ? tarotStatic(cards) : tarotMarquee(cards)}
           <div class="scroll-wrap">
             <div class="scroll-paper"><div class="rbody scroll-text">${formatReading(data.reading)}</div></div>
           </div>

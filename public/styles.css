@@ -406,6 +406,7 @@ body{
   .ts-circle{width:400px;height:400px;margin:-200px 0 0 -200px}
   .scroll-wrap{padding:0}
   .scroll-paper{padding:24px 13px}
+  .card-row{gap:8px;padding:10px 8px 12px}
 }
 @media(prefers-reduced-motion:reduce){
   .ts-deck .tz,.ts-slot .flip,.ts-circle,.ts-motes i,.ts-deck::after{animation:none!important;transition:none!important}
@@ -415,7 +416,7 @@ body{
 /* ===== タロット鑑定結果：フェードイン＋古代紙の炙り出し ===== */
 /* タイトル「タロットの鑑定」を約2秒かけてフェードイン */
 .tarot-result > .rhead{opacity:0;animation:trFade 2s ease .15s forwards}
-.tarot-result > .rbody,.tarot-result > .card-marquee{opacity:0;animation:trFade 1s ease .5s forwards}
+.tarot-result > .rbody,.tarot-result > .card-marquee,.tarot-result > .card-row{opacity:0;animation:trFade 1s ease .5s forwards}
 .tarot-result > .disc,.tarot-result > .fb{opacity:0;animation:trFade .9s ease 5.6s forwards}
 @keyframes trFade{from{opacity:0}to{opacity:1}}
 
@@ -435,6 +436,17 @@ body{
 .card-marquee .tcard-body{position:static;left:auto;right:auto;bottom:auto;padding:8px 2px 0;text-align:center}
 .card-marquee .tcard-body .nm{color:#efe6d4;text-shadow:none}
 .card-marquee .tcard-body .kw{color:var(--muted);text-shadow:none}
+/* 少数枚：スクロールせず画面内に収める静的配置 */
+.card-row{display:flex;justify-content:center;align-items:flex-start;gap:14px;flex-wrap:nowrap;padding:10px 14px 12px;max-width:720px;margin:0 auto}
+.card-row .tcard{flex:1 1 0;min-width:0;max-width:200px;margin:0;aspect-ratio:auto;border:none;box-shadow:none;background:none;overflow:visible;display:flex;flex-direction:column}
+.card-row[data-count="1"] .tcard{max-width:220px}
+.card-row .tcard-card{position:relative;width:100%;aspect-ratio:1/1.78;border-radius:7px;overflow:hidden;border:1px solid var(--line2);box-shadow:0 8px 22px rgba(0,0,0,.5)}
+.card-row .tcard-img{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;background:none}
+.card-row .tcard-img.rev{transform:rotate(180deg)}
+.card-row .tcard-art{position:absolute;inset:0}
+.card-row .tcard-body{position:static;left:auto;right:auto;bottom:auto;padding:8px 2px 0;text-align:center}
+.card-row .tcard-body .nm{color:#efe6d4;text-shadow:none}
+.card-row .tcard-body .kw{color:var(--muted);text-shadow:none}
 
 /* 古代紙：中央から左右へ広がる */
 .scroll-wrap{position:relative;margin:8px 0 18px;padding:0 1px}
@@ -460,7 +472,7 @@ body{
 .result:not(.tarot-result) .r-head{color:var(--gold)}
 
 @media(prefers-reduced-motion:reduce){
-  .tarot-result > .rhead,.tarot-result > .rbody,.tarot-result > .disc,.tarot-result > .fb{opacity:1;animation:none}
+  .tarot-result > .rhead,.tarot-result > .rbody,.tarot-result > .disc,.tarot-result > .fb,.tarot-result > .card-row{opacity:1;animation:none}
   .scroll-paper{clip-path:none;animation:none}
   .scroll-text .ch{opacity:1;animation:none}
 }
