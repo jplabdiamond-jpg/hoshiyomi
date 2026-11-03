@@ -20,10 +20,10 @@ const PALM_VISION_PROMPT =
 // 候補のビジョンモデル（上から順に試す）。
 // llama-3.2-visionはアカウントでのライセンス同意が必要なため、非ゲートのモデルも併せて試す。
 // kind: 'messages'=image_url(dataURL)形式 / 'llava'=バイト配列+prompt形式。
-// 現状Workers AIで即使える非ゲートの実働モデルは llava。
-// 高品質なLlama 3.2 Vision を使う場合は、アカウントでライセンス同意後に
-// 環境変数 PALM_VISION_MODEL=@cf/meta/llama-3.2-11b-vision-instruct を設定すれば優先される。
+// Llama 3.2 Vision（ライセンス同意済み・日本語の特徴抽出が高品質）を優先し、
+// 不調時は非ゲートの llava にフォールバックする。
 const VISION_CANDIDATES = [
+  { model: '@cf/meta/llama-3.2-11b-vision-instruct', kind: 'messages' },
   { model: '@cf/llava-hf/llava-1.5-7b-hf', kind: 'llava' },
 ];
 
@@ -36,23 +36,8 @@ function dataUrlToBytes(u) {
 }
 
 // 写真から手相の特徴を抽出。利用可能なビジョンモデルを順に試す。
-// forceModel を渡すと、そのモデルだけを使い（診断用）、失敗時は生エラーを投げる。
-async function extractPalmFeatures(env, dataUrl, forceModel) {
+async function extractPalmFeatures(env, dataUrl) {
   const kindOf = (m) => (m.includes('llava') || m.includes('uform') ? 'llava' : 'messages');
-  if (forceModel) {
-    const c = { model: forceModel, kind: kindOf(forceModel) };
-    let text = '';
-    if (c.kind === 'messages') {
-      const r = await env.AI.run(c.model, { messages: [{ role: 'user', content: [
-        { type: 'text', text: PALM_VISION_PROMPT }, { type: 'image_url', image_url: { url: dataUrl } },
-      ] }], max_tokens: 768, temperature: 0.2 });
-      text = (r && (r.response || r.result || '')).trim();
-    } else {
-      const r = await env.AI.run(c.model, { image: dataUrlToBytes(dataUrl), prompt: PALM_VISION_PROMPT, max_tokens: 768 });
-      text = (r && (r.description || r.response || r.result || '')).trim();
-    }
-    return { model: c.model, text };
-  }
   const pref = env.PALM_VISION_MODEL
     ? [{ model: env.PALM_VISION_MODEL, kind: kindOf(env.PALM_VISION_MODEL) }]
     : [];
@@ -134,23 +119,6 @@ export async function onRequestPost(context) {
       return json({ error: '手のひらの写真（JPEG/PNG）をアップロードしてください' }, 400);
     }
     if (!env.AI) return json({ error: '画像の解析が利用できません（AI未設定）' }, 503);
-    // 同意: body.agree=true で、指定モデルのライセンスに 'agree' を送って受諾登録する
-    if (body.agree) {
-      const m = body.agreeModel || DEFAULT_VISION_MODEL;
-      const out = {};
-      try { out.prompt = await env.AI.run(m, { prompt: 'agree' }); } catch (e) { out.promptErr = String(e.message || e); }
-      try { out.messages = await env.AI.run(m, { messages: [{ role: 'user', content: 'agree' }] }); } catch (e) { out.messagesErr = String(e.message || e); }
-      return json({ agree: true, model: m, result: out });
-    }
-    // 診断: body.visionModel を指定するとそのモデルだけを試し、生の結果/エラーを返す
-    if (body.visionModel) {
-      try {
-        const v = await extractPalmFeatures(env, img, body.visionModel);
-        return json({ diag: true, model: v.model, textHead: (v.text || '').slice(0, 200) });
-      } catch (e) {
-        return json({ diag: true, model: body.visionModel, error: String(e.message || e) }, 200);
-      }
-    }
     try {
       const v = await extractPalmFeatures(env, img);
       palmFeatures = v.text; palmVisionModel = v.model;
