@@ -53,7 +53,7 @@ body{
   color:var(--gold);border:1px solid var(--line);background:radial-gradient(circle at 36% 30%,rgba(227,200,141,.16),rgba(16,19,31,.4))}
 .avatar svg{width:18px;height:18px}
 .avatar.u{color:var(--muted);font-family:var(--serif);font-size:14px;font-style:italic}
-.bubble{background:var(--bot);border:1px solid var(--line2);border-radius:4px 16px 16px 16px;padding:13px 17px;font-size:15px;
+.bubble{background:var(--bot);border:1px solid var(--line2);border-radius:4px 16px 16px 16px;padding:13px 17px;font-size:16px;
   box-shadow:var(--shadow);backdrop-filter:blur(8px);white-space:pre-wrap;word-break:break-word}
 .msg.user .bubble{background:linear-gradient(135deg,rgba(201,168,106,.2),rgba(168,138,80,.12));
   border:1px solid rgba(201,168,106,.3);color:#f3ecdc;border-radius:16px 4px 16px 16px}
@@ -106,7 +106,18 @@ body{
   border-bottom:1px solid var(--line);font-family:var(--serif);font-weight:600;font-size:19px;letter-spacing:.06em;
   display:flex;align-items:center;gap:9px;color:var(--gold)}
 .result .rhead::before{content:"✦";font-size:12px;color:var(--gold-deep)}
-.result .rbody{padding:15px 18px;font-size:14.5px;white-space:pre-wrap}
+.result .rbody{padding:16px 18px;font-size:16.5px;line-height:1.95}
+.r-p{margin:0 0 13px;font-size:16.5px;line-height:1.95}
+.r-p:last-child{margin-bottom:0}
+.r-sub{font-family:var(--mincho);color:var(--gold);font-size:16px;margin:16px 0 8px;font-weight:600}
+.read-ul,.read-ol{list-style:none;margin:6px 0 16px;padding:0;display:flex;flex-direction:column;gap:9px}
+.read-ul li,.read-ol li{display:flex;gap:11px;align-items:flex-start;
+  background:rgba(201,168,106,.06);border:1px solid var(--line2);border-radius:7px;padding:12px 14px}
+.li-chk{flex:0 0 auto;color:var(--gold);font-weight:700;font-size:15px;margin-top:2px;
+  width:20px;height:20px;border-radius:50%;background:rgba(201,168,106,.16);display:grid;place-items:center}
+.li-num{flex:0 0 auto;width:23px;height:23px;border-radius:50%;background:rgba(201,168,106,.18);
+  color:var(--gold);font-weight:700;font-size:13px;display:grid;place-items:center;margin-top:1px}
+.li-txt{flex:1;font-size:16px;line-height:1.8}
 .result h4{font-family:var(--mincho);color:var(--gold);font-size:14px;margin:16px 0 7px;letter-spacing:.05em;
   padding-bottom:4px;border-bottom:1px solid var(--line2)}
 .data-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px;margin:6px 0 2px}
@@ -238,7 +249,8 @@ body{
 .composer.no-input .quick{margin-bottom:4px}
 
 @media(max-width:600px){
-  .wordmark h1{font-size:25px}.bubble{font-size:14.5px}.pillars{gap:5px}.pillar .kanshi{font-size:19px}
+  .wordmark h1{font-size:25px}.bubble{font-size:15.5px}.pillars{gap:5px}.pillar .kanshi{font-size:19px}
+  .result .rbody,.r-p{font-size:16px}.li-txt{font-size:15.5px}.scroll-text{font-size:16px}
   .app-header{padding:9px 18px 3px}
 }
 
@@ -434,7 +446,7 @@ body{
 @keyframes trSpread{0%{clip-path:inset(0 50% 0 50%)}100%{clip-path:inset(0 0 0 0)}}
 
 /* 炙り出し：1文字ずつランダムに浮かび上がる */
-.scroll-text{position:relative;z-index:1;font-size:15.5px;color:#48331d;line-height:1.95;letter-spacing:.01em;
+.scroll-text{position:relative;z-index:1;font-size:16.5px;color:#48331d;line-height:1.95;letter-spacing:.01em;
   text-shadow:0 1px 0 rgba(255,248,225,.4)}
 .scroll-text .ch{display:inline-block;opacity:0;animation:chBurn .6s ease forwards}
 @keyframes chBurn{0%{opacity:0;filter:blur(3px) brightness(1.7) sepia(1);transform:scale(1.25)}

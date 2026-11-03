@@ -690,11 +690,44 @@
     });
   }
 
+  const CIRCLED = '①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳';
+  const circledToNum = (ch) => { const i = CIRCLED.indexOf(ch); return i >= 0 ? i + 1 : ch; };
+  // 鑑定文を「見出し・チェックリスト・段落」の構造に整形して読みやすくする
   function formatReading(txt) {
-    return esc(txt)
-      .replace(/^[\s　]*[■◾▪◼]\s*(.+?)[\s　]*$/gm, '<h3 class="r-head">$1</h3>')
-      .replace(/^[\s　]*[①-⑩0-9]+[．.、]?\s*(.+)$/gm, (m, p1) => (/[：:]/.test(m) || m.length < 30) && /^[\s　]*[①-⑩]/.test(m) ? `<h4>${p1}</h4>` : m)
-      .replace(/【(.+?)】/g, '<h4>$1</h4>');
+    if (!txt) return '';
+    const lines = String(txt).replace(/\r/g, '').split('\n');
+    let html = ''; let buf = []; let type = null;
+    const flush = () => {
+      if (!buf.length) return;
+      html += `<${type} class="${type === 'ol' ? 'read-ol' : 'read-ul'}">${buf.join('')}</${type}>`;
+      buf = []; type = null;
+    };
+    for (const raw of lines) {
+      const line = raw.trim();
+      if (!line) { flush(); continue; }
+      let m;
+      if ((m = line.match(/^[■◾▪◼]\s*(.+?)$/))) { flush(); html += `<h3 class="r-head">${esc(m[1])}</h3>`; continue; }
+      if ((m = line.match(/^【(.+?)】\s*(.*)$/))) { flush(); html += `<h4 class="r-sub">${esc(m[1])}</h4>`; if (m[2]) html += `<p class="r-p">${esc(m[2])}</p>`; continue; }
+      // 番号つき項目（1. / 1） / ①）
+      if ((m = line.match(/^(?:(\d{1,2})[.．、）)]|([①-⑳]))\s*(.+)$/))) {
+        if (type && type !== 'ol') flush();
+        type = 'ol';
+        const num = m[1] || circledToNum(m[2]);
+        buf.push(`<li><span class="li-num">${esc(String(num))}</span><span class="li-txt">${esc(m[3])}</span></li>`);
+        continue;
+      }
+      // 箇条書き（・ • ◦ - – ＊ *）→ チェックマーク
+      if ((m = line.match(/^[・•◦\-–＊*]\s*(.+)$/))) {
+        if (type && type !== 'ul') flush();
+        type = 'ul';
+        buf.push(`<li><span class="li-chk">✓</span><span class="li-txt">${esc(m[1])}</span></li>`);
+        continue;
+      }
+      flush();
+      html += `<p class="r-p">${esc(line)}</p>`;
+    }
+    flush();
+    return html;
   }
 
   function cell(b, v) { return `<div class="data-cell"><b>${esc(b)}</b>${esc(v)}</div>`; }
