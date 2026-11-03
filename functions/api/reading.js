@@ -134,6 +134,14 @@ export async function onRequestPost(context) {
       return json({ error: '手のひらの写真（JPEG/PNG）をアップロードしてください' }, 400);
     }
     if (!env.AI) return json({ error: '画像の解析が利用できません（AI未設定）' }, 503);
+    // 同意: body.agree=true で、指定モデルのライセンスに 'agree' を送って受諾登録する
+    if (body.agree) {
+      const m = body.agreeModel || DEFAULT_VISION_MODEL;
+      const out = {};
+      try { out.prompt = await env.AI.run(m, { prompt: 'agree' }); } catch (e) { out.promptErr = String(e.message || e); }
+      try { out.messages = await env.AI.run(m, { messages: [{ role: 'user', content: 'agree' }] }); } catch (e) { out.messagesErr = String(e.message || e); }
+      return json({ agree: true, model: m, result: out });
+    }
     // 診断: body.visionModel を指定するとそのモデルだけを試し、生の結果/エラーを返す
     if (body.visionModel) {
       try {
