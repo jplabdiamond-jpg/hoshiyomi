@@ -35,8 +35,8 @@ function dataUrlToBytes(u) {
   return [...a];
 }
 
-// 写真から手相の特徴を抽出。利用可能なビジョンモデルを順に試す。
-async function extractPalmFeatures(env, dataUrl) {
+// 画像＋プロンプトでビジョンモデルを呼ぶ（候補を順に試す）
+async function runVision(env, dataUrl, promptText, maxTokens = 768) {
   const kindOf = (m) => (m.includes('llava') || m.includes('uform') ? 'llava' : 'messages');
   const pref = env.PALM_VISION_MODEL
     ? [{ model: env.PALM_VISION_MODEL, kind: kindOf(env.PALM_VISION_MODEL) }]
@@ -49,20 +49,40 @@ async function extractPalmFeatures(env, dataUrl) {
       if (c.kind === 'messages') {
         const r = await env.AI.run(c.model, {
           messages: [{ role: 'user', content: [
-            { type: 'text', text: PALM_VISION_PROMPT },
+            { type: 'text', text: promptText },
             { type: 'image_url', image_url: { url: dataUrl } },
           ] }],
-          max_tokens: 768, temperature: 0.2,
+          max_tokens: maxTokens, temperature: 0.1,
         });
         text = (r && (r.response || r.result || '')).trim();
       } else {
-        const r = await env.AI.run(c.model, { image: dataUrlToBytes(dataUrl), prompt: PALM_VISION_PROMPT, max_tokens: 768 });
+        const r = await env.AI.run(c.model, { image: dataUrlToBytes(dataUrl), prompt: promptText, max_tokens: maxTokens });
         text = (r && (r.description || r.response || r.result || '')).trim();
       }
       if (text) return { model: c.model, text };
     } catch (e) { lastErr = e; }
   }
   throw lastErr || new Error('利用可能なビジョンモデルがありません');
+}
+
+// 厳格判定：手のひらがはっきり写っているか（手以外は弾く）
+const PALM_CLASSIFY_PROMPT =
+  'この画像を判定してください。「人間の手のひら」が、手相を読めるくらいはっきり写っていますか？\n' +
+  '次の場合はすべて「いいえ」です: 手以外（風景・物・動物・食べ物・文字・画面など）／顔や人物全体／手の甲だけで手のひらの線が見えない／手のひらが小さすぎる・暗い・ぶれて線が読めない。\n' +
+  '手のひら（指と手相の線）がはっきり確認できる場合のみ「はい」。\n' +
+  '回答は「はい」または「いいえ」の一語だけ。説明や描写は一切しないこと。';
+
+// 手のひらか判定（true=手のひら）。判定不能や曖昧は false（＝弾く）側に倒す。
+async function classifyPalm(env, dataUrl) {
+  const { text } = await runVision(env, dataUrl, PALM_CLASSIFY_PROMPT, 16);
+  const hasYes = /はい|\byes\b/i.test(text);
+  const hasNo = /いいえ|\bno\b/i.test(text);
+  return { isPalm: hasYes && !hasNo, raw: text };
+}
+
+// 写真から手相の特徴を抽出
+async function extractPalmFeatures(env, dataUrl) {
+  return runVision(env, dataUrl, PALM_VISION_PROMPT, 768);
 }
 
 const json = (obj, status = 200) =>
@@ -119,6 +139,15 @@ export async function onRequestPost(context) {
       return json({ error: '手のひらの写真（JPEG/PNG）をアップロードしてください' }, 400);
     }
     if (!env.AI) return json({ error: '画像の解析が利用できません（AI未設定）' }, 503);
+    const RETAKE = '手のひらの写真として読み取れませんでした。手のひら全体（指先まで）がはっきり写るように、明るい場所で手を少し広げて撮った写真をアップロードしてください。';
+    // ① 手のひらか厳格判定（手以外・手の甲・不鮮明は弾く）
+    try {
+      const cls = await classifyPalm(env, img);
+      if (!cls.isPalm) {
+        return json({ divination, title: '手相', data: {}, meta: {}, reading: RETAKE, disclaimer: DISCLAIMER, readingId: null });
+      }
+    } catch { /* 判定自体が失敗したら②の抽出＋[NOT_PALM]に委ねる */ }
+    // ② 特徴抽出
     try {
       const v = await extractPalmFeatures(env, img);
       palmFeatures = v.text; palmVisionModel = v.model;
