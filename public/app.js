@@ -283,6 +283,12 @@
         bubble('user', '<img class="up-thumb" alt="アップロードした写真" src="' + dataUrl + '">');
         state.answers[f.key] = dataUrl; state.idx++; clearQuick(); askNext();
       };
+      if (!f.required) {
+        setQuick([{ label: '写真なしで進む', ghost: true, onClick: () => {
+          input.disabled = false; input.placeholder = 'メッセージを入力…';
+          bubble('user', '写真なし'); state.answers[f.key] = ''; state.idx++; clearQuick(); askNext();
+        } }]);
+      }
     } else if (f.type === 'events') {
       // 過去の転機：カテゴリ＋年（月は任意）を最大 maxItems 件。答え合わせで本人較正に使う
       input.disabled = true; input.placeholder = '下のフォームで入力してください'; clearQuick(); showInput(false);

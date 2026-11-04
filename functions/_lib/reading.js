@@ -96,17 +96,23 @@ export function computeDivination(key, answers, opts = {}) {
   }
 
   if (key === 'palm') {
-    // 画像からの特徴抽出（ビジョンモデルの結果）は opts.features で受け取る
+    // 画像からの特徴抽出（ビジョンモデルの結果）。features=利き手、features2=反対の手（任意）
     const features = (opts.features || '').trim();
-    const handLabel = answers.hand === 'right' ? '右手' : answers.hand === 'left' ? '左手' : '不明';
-    const ctx = [`観察した手: ${handLabel}`];
+    const features2 = (opts.features2 || '').trim();
+    const left = answers.hand === 'left';
+    const domLabel = left ? '左手（利き手＝今の自分・努力で培ったもの・これからの運）' : '右手（利き手＝今の自分・努力で培ったもの・これからの運）';
+    const othLabel = left ? '右手（反対の手＝生まれ持った性質・素質）' : '左手（反対の手＝生まれ持った性質・素質）';
+    const bothHands = !!features2;
+    const parts = [`《${domLabel}の観察》\n${features || '（特徴を読み取れませんでした）'}`];
+    if (bothHands) parts.push(`《${othLabel}の観察》\n${features2}`);
+    const ctx = [`利き手: ${left ? '左利き' : '右利き'}`, `写真: ${bothHands ? '両手' : '利き手のみ'}`];
     if (answers.question) ctx.push(`相談者が気にしていること: ${answers.question}`);
-    const material = `《手相の観察（アップロードされた写真から読み取れた特徴）》\n${features || '（特徴を読み取れませんでした）'}\n\n《文脈》\n${ctx.join('\n')}`;
+    parts.push(`《文脈》\n${ctx.join('\n')}`);
     return {
       title: '手相',
-      data: { features, hand: answers.hand || null, question: answers.question || null },
-      material,
-      meta: { hand: answers.hand || null },
+      data: { features, features2: features2 || null, bothHands, hand: answers.hand || null, question: answers.question || null },
+      material: parts.join('\n\n'),
+      meta: { hand: answers.hand || null, bothHands },
     };
   }
 
@@ -237,7 +243,8 @@ export function buildMessages(key, computed, answers) {
       '手相の鑑定文を作ってください。手順は厳密に次の通り:\n' +
       '(1) 下の【手相リファレンス】は、手相の「特徴→意味」の対応辞書です。\n' +
       '(2) 鑑定データの「手相の観察」に書かれた“実際に写真から見えた特徴”だけを取り上げ、その一つひとつをリファレンスの該当項目に照合して意味を導く。\n' +
-      '(3) 観察に無い線・印は一切語らない（創作禁止）。「不明瞭」とある項目は触れない。\n\n' +
+      '(3) 観察に無い線・印は一切語らない（創作禁止）。「不明瞭」とある項目は触れない。\n' +
+      '(4) 【両手がある場合】利き手＝今の自分・努力で培ったもの・これからの運、反対の手＝生まれ持った性質・素質。両手を突き合わせ、「生まれ持った素質（反対の手）→ 今の姿（利き手）」の流れで語り、左右で違う特徴があれば“そこがあなたが成長・変化した点”として具体的に描く（例: 反対の手では知能線が短め＝元々は直感型だが、利き手では長く伸びて熟慮型に育っている）。似ている点は“生来の資質をまっすぐ活かせている強み”として語る。利き手だけの場合は、それを今の総合的な手相として読む。\n\n' +
       '【絶対の禁止事項】誰にでも当てはまる一般論・曖昧な性格描写は禁止。例えば「あなたは優しいが芯がある」「情熱と冷静さを併せ持つ」のような、どんな人にも言える文は書かないこと。' +
       '必ず「観察された具体的な特徴（例: 知能線が小指の下まで長く下へカーブ）」→「その特徴が示す具体的な意味（例: 想像力が豊かで企画や創作に向く）」という形で、特徴を名指しして根拠とセットで述べること。\n\n' +
       '次の見出しで構成します。\n' +
@@ -272,7 +279,8 @@ export function buildMessages(key, computed, answers) {
 
   // 画像base64など巨大な値はプロンプトに入れない（トークン超過の原因になる）
   const safeAnswers = { ...answers };
-  if (safeAnswers.palmImage) safeAnswers.palmImage = '[写真アップロード済み]';
+  if (safeAnswers.palmImage) safeAnswers.palmImage = '[利き手の写真アップロード済み]';
+  if (safeAnswers.palmImage2) safeAnswers.palmImage2 = '[反対の手の写真アップロード済み]';
   for (const k of Object.keys(safeAnswers)) {
     if (typeof safeAnswers[k] === 'string' && safeAnswers[k].length > 500) safeAnswers[k] = safeAnswers[k].slice(0, 500) + '…';
   }

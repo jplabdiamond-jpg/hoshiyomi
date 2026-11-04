@@ -141,43 +141,43 @@ export async function onRequestPost(context) {
     try { calibWeights = (await getCalibration(env.DB)).weights; } catch { calibWeights = {}; }
   }
 
-  // 0.5) 手相：アップロードされた写真から特徴を抽出（ビジョンモデル）
-  let palmFeatures = null, palmVisionModel = null;
+  // 0.5) 手相：利き手（必須）＋反対の手（任意）の写真から特徴を抽出（ビジョンモデル）
+  let palmFeatures = null, palmFeatures2 = null, palmVisionModel = null;
   if (divination === 'palm') {
+    const isDataImg = (s) => typeof s === 'string' && /^data:image\/(png|jpe?g|webp);base64,/i.test(s);
     const img = answers && answers.palmImage;
-    if (!img || typeof img !== 'string' || !/^data:image\/(png|jpe?g|webp);base64,/i.test(img)) {
-      return json({ error: '手のひらの写真（JPEG/PNG）をアップロードしてください' }, 400);
+    if (!isDataImg(img)) {
+      return json({ error: '利き手の手のひらの写真（JPEG/PNG）をアップロードしてください' }, 400);
     }
     if (!env.AI) return json({ error: '画像の解析が利用できません（AI未設定）' }, 503);
     const RETAKE = '手のひらの写真として読み取れませんでした。手のひら全体（指先まで）がはっきり写るように、明るい場所で手を少し広げて撮った写真をアップロードしてください。';
-    // ① 手のひらか厳格判定（手以外・手の甲・不鮮明は弾く）
-    try {
-      const cls = await classifyPalm(env, img);
-      if (!cls.isPalm) {
-        return json({ divination, title: '手相', data: {}, meta: {}, reading: RETAKE, disclaimer: DISCLAIMER, readingId: null });
-      }
-    } catch { /* 判定自体が失敗したら②の抽出＋[NOT_PALM]に委ねる */ }
-    // ② 特徴抽出
-    try {
-      const v = await extractPalmFeatures(env, img);
-      palmFeatures = v.text; palmVisionModel = v.model;
-    } catch (e) {
+    // 1枚を「手のひら判定→特徴抽出」する。手でなければ null を返す（呼び出し側で扱い分け）
+    const readOneHand = async (image) => {
+      try { const cls = await classifyPalm(env, image); if (!cls.isPalm) return { palm: false }; } catch { /* 判定失敗は抽出の[NOT_PALM]に委ねる */ }
+      const v = await extractPalmFeatures(env, image);
+      if (/^\s*\[NOT_PALM\]/.test(v.text)) return { palm: false };
+      return { palm: true, text: v.text, model: v.model };
+    };
+    // 利き手（必須）
+    let dom;
+    try { dom = await readOneHand(img); } catch (e) {
       return json({ error: '画像の解析に失敗しました。明るい場所で撮り直してお試しください。', detail: String(e.message || e) }, 200);
     }
-    // 手のひらとして読み取れない場合は、鑑定せず撮り直しを案内
-    if (/^\s*\[NOT_PALM\]/.test(palmFeatures)) {
-      return json({
-        divination, title: '手相', data: {}, meta: {},
-        reading: '手のひらがはっきり読み取れませんでした。明るい場所で、手のひら全体（指先まで）がはっきり写るように撮り直していただけますか。手を少し広げ、影が入らないようにすると占いやすくなります。',
-        disclaimer: DISCLAIMER, model: palmVisionModel, readingId: null,
-      });
+    if (!dom.palm) {
+      return json({ divination, title: '手相', data: {}, meta: {}, reading: RETAKE, disclaimer: DISCLAIMER, readingId: null });
+    }
+    palmFeatures = dom.text; palmVisionModel = dom.model;
+    // 反対の手（任意）。読めない場合は無視して片手鑑定にする
+    const img2 = answers && answers.palmImage2;
+    if (isDataImg(img2)) {
+      try { const other = await readOneHand(img2); if (other.palm) palmFeatures2 = other.text; } catch { /* 2枚目は失敗しても続行 */ }
     }
   }
 
   // 1) 確定計算（命式・チャート・カード／手相は特徴テキストを材料化）
   let computed;
   try {
-    computed = computeDivination(divination, answers, { calibWeights, specTable: SPEC, features: palmFeatures });
+    computed = computeDivination(divination, answers, { calibWeights, specTable: SPEC, features: palmFeatures, features2: palmFeatures2 });
   } catch (e) {
     return json({ error: String(e.message || e) }, 400);
   }
@@ -220,7 +220,7 @@ export async function onRequestPost(context) {
       await ensureSchema(env.DB);
       readingId = crypto.randomUUID();
       // 画像のbase64は保存しない（プライバシー・容量）。手相は特徴テキストのみ残す
-      const storeAnswers = divination === 'palm' ? { ...answers, palmImage: '[image omitted]' } : answers;
+      const storeAnswers = divination === 'palm' ? { ...answers, palmImage: '[image omitted]', palmImage2: answers.palmImage2 ? '[image omitted]' : undefined } : answers;
       await env.DB.prepare(
         'INSERT INTO readings (id, anon_id, divination, input_json, summary, model) VALUES (?, ?, ?, ?, ?, ?)'
       ).bind(

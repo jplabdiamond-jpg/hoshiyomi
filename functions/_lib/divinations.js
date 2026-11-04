@@ -101,16 +101,20 @@ export const DIVINATIONS = [
     key: 'palm',
     ja: '手相',
     icon: '🖐',
-    tagline: '手のひらの写真から、線と形に表れた性質と運の流れを読む',
+    tagline: '手のひらの写真から性質と運の流れを読む（両手で生来→今の変化まで）',
     fields: [
       {
-        key: 'palmImage', label: '手のひらの写真', type: 'image', required: true,
-        help: '明るい場所で、手のひら全体（指先まで）がはっきり写るように撮ってください。利き手でなくても大丈夫です。',
+        key: 'hand', label: '利き手はどちらですか', type: 'select', required: true,
+        help: '左右で意味が異なります（利き手＝今の自分・努力で培ったもの／反対の手＝生まれ持った性質）',
+        options: [{ value: 'right', label: '右利き' }, { value: 'left', label: '左利き' }],
       },
       {
-        key: 'hand', label: 'どちらの手ですか', type: 'select', required: false,
-        help: '一般に右手は「今・後天運」、左手は「生まれ持った運」を表すとされます',
-        options: [{ value: 'right', label: '右手' }, { value: 'left', label: '左手' }],
+        key: 'palmImage', label: '利き手の手のひらの写真', type: 'image', required: true,
+        help: '利き手（今の自分・これからの運）。明るい場所で手のひら全体（指先まで）がはっきり写るように撮ってください。',
+      },
+      {
+        key: 'palmImage2', label: '反対の手の手のひらの写真（任意）', type: 'image', required: false,
+        help: '反対の手（生まれ持った性質）。両手あると「生来の自分→今→これから」の変化まで読めます。片手だけでもOK。',
       },
       { key: 'question', label: '気になっていること（任意）', type: 'text', required: false, help: '例）仕事／恋愛／健康 など。スキップ可' },
     ],
