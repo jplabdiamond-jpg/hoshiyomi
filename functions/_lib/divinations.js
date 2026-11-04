@@ -14,6 +14,7 @@ export const DIVINATIONS = [
         label: '出生時刻',
         type: 'time',
         required: false,
+        notice: '精度の高い鑑定のために、出生時刻はとても重要です。できるだけ正確にご入力ください（母子手帳などでご確認を）。',
         help: '例）10:30（不明なら「不明」でもOK。※アセンダント等の精度に影響します）',
       },
       {
@@ -37,6 +38,7 @@ export const DIVINATIONS = [
         label: '出生時刻',
         type: 'time',
         required: false,
+        notice: '精度の高い鑑定のために、出生時刻はとても重要です。できるだけ正確にご入力ください（母子手帳などでご確認を）。',
         help: '例）10:30（不明なら時柱を省略します）',
       },
       {
@@ -130,7 +132,7 @@ export const DIVINATIONS = [
     privacyNote: '入力項目が多い詳細プランです。生活情報・フルネーム・任意の職業/年収、手相の写真などは鑑定の精度向上のためだけに使い、サーバーには保存しません（計算後に破棄）。答えたくない項目はスキップできます。',
     fields: [
       { key: 'birthDate', label: '生年月日', type: 'date', required: true, help: '例）1990/5/15' },
-      { key: 'birthTime', label: '出生時刻', type: 'time', required: false, help: '例）10:30（不明でもOK）' },
+      { key: 'birthTime', label: '出生時刻', type: 'time', required: false, notice: '精度の高い鑑定のために、出生時刻はとても重要です。できるだけ正確にご入力ください（母子手帳などでご確認を）。不明な場合も、のちほど伺う「過去の転機」から時刻を推定します。', help: '例）10:30（不明でもOK）' },
       { key: 'birthPlace', label: '出生地', type: 'place', required: false, help: '例）東京都（時刻が分かる場合のみ使用）' },
       {
         key: 'gender', label: '性別', type: 'select', required: true,

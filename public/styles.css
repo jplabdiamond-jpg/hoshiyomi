@@ -118,6 +118,12 @@ body{
 .li-num{flex:0 0 auto;width:23px;height:23px;border-radius:50%;background:rgba(201,168,106,.18);
   color:var(--gold);font-weight:700;font-size:13px;display:grid;place-items:center;margin-top:1px}
 .li-txt{flex:1;font-size:16px;line-height:1.8}
+/* 入力欄の目立つ注意書き（出生時刻など） */
+.field-notice{display:flex;gap:9px;align-items:flex-start;margin:11px 0 3px;padding:12px 14px;border-radius:8px;
+  color:var(--gold);font-weight:700;font-size:15px;line-height:1.65;
+  background:linear-gradient(135deg,rgba(201,168,106,.18),rgba(201,168,106,.07));
+  border:1px solid rgba(201,168,106,.5);box-shadow:0 0 0 1px rgba(201,168,106,.08)}
+.field-notice .fn-ic{flex:0 0 auto;font-size:17px;line-height:1.4}
 .result h4{font-family:var(--mincho);color:var(--gold);font-size:14px;margin:16px 0 7px;letter-spacing:.05em;
   padding-bottom:4px;border-bottom:1px solid var(--line2)}
 .data-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px;margin:6px 0 2px}

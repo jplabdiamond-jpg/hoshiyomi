@@ -326,6 +326,19 @@ export function forecastTransits(chart, nowDate, months = 30) {
   return top;
 }
 
+// --- レクティフィケーション用のエクスポート ---
+// ある瞬間(UTC)・緯度経度のアセンダント／MC黄経を返す（出生時刻に敏感＝時刻推定に使う）
+export function ascMcAtUTC(dateUTC, latDeg, lonDeg) {
+  const time = new Astronomy.AstroTime(dateUTC);
+  return computeAngles(time, latDeg, lonDeg); // { ascendant, mc }
+}
+// ある瞬間(UTC)の運行天体（日本語名）の黄経。イベント時のトランジット位置に使う
+export function bodyEclipticLongitude(bodyJa, dateUTC) {
+  const pl = PLANETS.find((p) => p.ja === bodyJa);
+  if (!pl) return null;
+  return eclipticLongitude(pl.body, new Astronomy.AstroTime(dateUTC));
+}
+
 export function summarizeTransits(hits) {
   if (!hits || !hits.length) return '';
   const lines = ['【トランジット＝今後の運気の転機（時期つき）】'];

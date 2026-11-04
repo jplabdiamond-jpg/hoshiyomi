@@ -223,6 +223,7 @@
     if (state.idx >= state.fields.length) return runReading();
     const f = state.fields[state.idx];
     let msg = `<b>${esc(f.label)}</b>を教えてください。`;
+    if (f.notice) msg += `<div class="field-notice"><span class="fn-ic">⚠</span><span>${esc(f.notice)}</span></div>`;
     if (f.help) msg += `<br><span style="color:var(--muted);font-size:13px">${esc(f.help)}</span>`;
     await botSay(msg, 450);
 

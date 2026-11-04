@@ -10,6 +10,7 @@ import { computeProfileScore, summarizeProfileScore } from './profilescore.js';
 import { computeForesight, summarizeForesight } from './foresight.js';
 import { getDivination, resolveCity, parseDate, parseTime } from './divinations.js';
 import { PALMISTRY_REFERENCE } from './palmistry.js';
+import { rectifyBirthTime } from './rectify.js';
 
 const JP_TZ = 540; // 日本標準時（分）
 
@@ -119,8 +120,27 @@ export function computeDivination(key, answers, opts = {}) {
   if (key === 'comprehensive' || key === 'comprehensive_plus') {
     const d = parseDate(answers.birthDate);
     if (!d) throw new Error('生年月日を読み取れませんでした');
-    const t = parseTime(answers.birthTime);
-    const city = t.known ? resolveCity(answers.birthPlace) : null;
+    let t = parseTime(answers.birthTime);
+    const city = resolveCity(answers.birthPlace); // 時刻不明でもレクティフィケーションに使うため常に解決
+    const pastEv = parsePastEvents(answers.pastEvents);
+
+    // 出生時刻レクティフィケーション：時刻不明＋出生地＋過去の転機があれば、過去の出来事に
+    // 最も合う出生時刻を逆推定する。確信度が十分な時だけアセンダント/MC・ハウスを有効化し
+    // （低確信度の角度は誤差を持ち込むため採用しない）、鑑定文には確度に応じた断りを入れる。
+    const RECT_APPLY = 0.3;   // これ以上かつAM/PM解決時のみASC/MC/ハウスを採用
+    const RECT_MENTION = 0.08; // これ以上なら「推定の目安」として言及（角度は未採用）
+    let rectified = null;
+    if (!t.known && city && pastEv.length) {
+      try {
+        const r = rectifyBirthTime({ year: d.year, month: d.month, day: d.day, lat: city.lat, lon: city.lon, events: pastEv });
+        if (r && r.confidence >= RECT_MENTION) {
+          // 時刻依存の角度（ASC/MC/ハウス）は、確信度が十分で かつ 昼夜が確定している時だけ採用
+          r.applied = r.confidence >= RECT_APPLY && r.amPmResolved;
+          if (r.applied) { t = { known: true, hour: r.hour, minute: r.minute }; }
+          rectified = r;
+        }
+      } catch { /* 推定失敗時は従来どおり時刻なしで続行 */ }
+    }
 
     const chart = computeNatalChart({
       year: d.year, month: d.month, day: d.day, hour: t.hour, minute: t.minute,
@@ -179,6 +199,16 @@ export function computeDivination(key, answers, opts = {}) {
     parts.push('《統計リスク層》\n' + summarizeRisk(risk));
     parts.push('《分野別の偏差（統計＋占いを合算した、平均からのズレ）》\n' + summarizeProfileScore(profile));
     parts.push('《未来予測（流月・パーソナルイヤー・節目・合致点）》\n' + summarizeForesight(foresight));
+    if (rectified) {
+      const hh = String(rectified.hour).padStart(2, '0'), mm = String(rectified.minute).padStart(2, '0');
+      const win = rectified.windowMin >= 60 ? `±${Math.round(rectified.windowMin / 60 * 10) / 10}時間` : `±${rectified.windowMin}分`;
+      const conf = rectified.confidence >= 0.5 ? '高め' : rectified.confidence >= 0.3 ? '中程度' : '低め';
+      if (rectified.applied) {
+        parts.push(`《鑑定の補足》\n出生時刻が未入力のため、申告された過去の転機に最もよく合う時刻（推定 ${hh}:${mm} 前後 ${win}／確度${conf}）でアセンダント等を算出しています。鑑定文の中で一度だけ軽く「出生時刻は過去の出来事から推定しました（より正確な時刻が分かると精度が上がります）」と断りを入れ、時刻に依存する読み（アセンダント・ハウス・ASC/MCへの転機）は“推定に基づく参考”として扱うこと。`);
+      } else {
+        parts.push(`《鑑定の補足》\n出生時刻は未入力。過去の転機からの推定では ${hh}:${mm} 前後（${win}・確度${conf}）が候補だが、決め手が弱いためアセンダント・ハウスは用いず、時刻に依存しない読み（星座・四柱・数秘など）で鑑定している。鑑定文の最後で一度だけ「出生時刻が分かるとアセンダントやハウスまで踏み込め、さらに精度が上がります」と自然に添えること。時刻や推定時刻の数字そのものは本文に書かないこと。`);
+      }
+    }
 
     return {
       title: '総合鑑定',
@@ -187,7 +217,7 @@ export function computeDivination(key, answers, opts = {}) {
         context: { theme: answers.theme, job: answers.job, tenure: answers.tenure, income: answers.income, lifestyle: answers.lifestyle },
       },
       material: parts.join('\n\n'),
-      meta: { timeKnown: t.known, place: city?.matched || null, hasName: !!seimei },
+      meta: { timeKnown: t.known, place: city?.matched || null, hasName: !!seimei, rectified: rectified ? { hour: rectified.hour, minute: rectified.minute, confidence: rectified.confidence, applied: rectified.applied, windowMin: rectified.windowMin } : null },
     };
   }
 
