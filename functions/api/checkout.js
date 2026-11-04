@@ -3,6 +3,7 @@
 // 総合鑑定の支払い用 Stripe Checkout セッションを作成する。
 import { ensureSchema } from '../_lib/db.js';
 import { createCheckoutSession } from '../_lib/stripe.js';
+import { processPalmHands } from '../_lib/palm.js';
 
 const json = (obj, status = 200) =>
   new Response(JSON.stringify(obj), { status, headers: { 'content-type': 'application/json; charset=utf-8' } });
@@ -18,8 +19,20 @@ export async function onRequestPost(context) {
 
   let b;
   try { b = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
-  const answers = b?.answers;
+  let answers = b?.answers;
   if (!answers) return json({ error: 'answers は必須です' }, 400);
+
+  // 手相（両手）を決済前に解析し、画像を特徴テキストに置き換えてから注文を保存する
+  // （画像base64は大きく保存できないため、また不備な写真で課金させないため）
+  try {
+    const palm = await processPalmHands(env, answers);
+    if (palm.error) return json({ error: palm.error, detail: palm.detail }, 400);
+    if (palm.retake) return json({ error: palm.retake }, 400);
+    answers = { ...answers, palmFeatures: palm.features, palmFeatures2: palm.features2 };
+    delete answers.palmImage; delete answers.palmImage2;
+  } catch (e) {
+    return json({ error: '手相の画像解析に失敗しました。明るい場所で撮り直してお試しください。', detail: String(e.message || e) }, 200);
+  }
 
   try {
     await ensureSchema(env.DB);

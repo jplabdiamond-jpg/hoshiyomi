@@ -1,7 +1,7 @@
 // Stripe REST ヘルパー（Workers から fetch で直接呼ぶ。SDK不要）
 const API = 'https://api.stripe.com/v1';
 
-export const PRICE_JPY = 500; // 総合鑑定 1回の価格（円・ゼロ小数通貨なのでそのまま円）
+export const PRICE_JPY = 2000; // 総合鑑定 1回の価格（円・ゼロ小数通貨なのでそのまま円）
 
 function auth(key) {
   return { Authorization: `Bearer ${key}`, 'content-type': 'application/x-www-form-urlencoded' };

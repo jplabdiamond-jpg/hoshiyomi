@@ -575,7 +575,7 @@
     state.stage = 'reading';
     input.disabled = true; clearQuick(); showInput(false);
     const price = state.div.price;
-    await botSay(`総合鑑定は <b>¥${price.toLocaleString()}</b> の有料鑑定です。<br>お支払いページ（Stripe）に移動します…`, 500);
+    await botSay(`総合鑑定は <b>¥${price.toLocaleString()}</b> の有料鑑定です。<br>手相を読み取り、お支払いページ（Stripe）を準備しています…（少々お待ちください）`, 500);
     const t = typing();
     try {
       const r = await fetch('/api/checkout', {

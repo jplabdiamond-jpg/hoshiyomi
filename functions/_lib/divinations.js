@@ -123,9 +123,9 @@ export const DIVINATIONS = [
     key: 'comprehensive_plus',
     ja: '総合鑑定',
     icon: '✺',
-    price: 500,
-    tagline: '占い×統計×風水を統合。日常情報から分野別のリスクと今後のアドバイスを出す',
-    privacyNote: '入力項目が多い詳細プランです。生活情報・フルネーム・任意の職業/年収などは鑑定の精度向上のためだけに使い、サーバーには保存しません（計算後に破棄）。答えたくない項目はスキップできます。',
+    price: 2000,
+    tagline: '占い×統計×風水×手相を統合。生来の性質から今後の転機・対策まで読み解く',
+    privacyNote: '入力項目が多い詳細プランです。生活情報・フルネーム・任意の職業/年収、手相の写真などは鑑定の精度向上のためだけに使い、サーバーには保存しません（計算後に破棄）。答えたくない項目はスキップできます。',
     fields: [
       { key: 'birthDate', label: '生年月日', type: 'date', required: true, help: '例）1990/5/15' },
       { key: 'birthTime', label: '出生時刻', type: 'time', required: false, help: '例）10:30（不明でもOK）' },
@@ -133,6 +133,19 @@ export const DIVINATIONS = [
       {
         key: 'gender', label: '性別', type: 'select', required: true,
         options: [{ value: 'male', label: '男性' }, { value: 'female', label: '女性' }],
+      },
+      {
+        key: 'hand', label: '利き手はどちらですか', type: 'select', required: true,
+        help: '手相で使います（利き手＝今の自分／反対の手＝生まれ持った性質）',
+        options: [{ value: 'right', label: '右利き' }, { value: 'left', label: '左利き' }],
+      },
+      {
+        key: 'palmImage', label: '利き手の手のひらの写真', type: 'image', required: true,
+        help: '手相鑑定に使用。明るい場所で手のひら全体（指先まで）がはっきり写るように撮ってください。',
+      },
+      {
+        key: 'palmImage2', label: '反対の手の手のひらの写真', type: 'image', required: true,
+        help: '手相鑑定に使用。両手を見比べて「生来→今→これから」を読みます。',
       },
       { key: 'sei', label: '姓（漢字）', type: 'text', required: false, help: '姓名判断に使用。任意' },
       { key: 'mei', label: '名（漢字）', type: 'text', required: false, help: '姓名判断に使用。任意' },

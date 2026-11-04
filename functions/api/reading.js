@@ -6,94 +6,11 @@ import { ensureSchema } from '../_lib/db.js';
 import { getCalibration, recordPredSignals } from '../_lib/calibration.js';
 import { SPEC } from '../_lib/baserates.js';
 import { getCheckoutSession } from '../_lib/stripe.js';
+import { processPalmHands } from '../_lib/palm.js';
 
 const PAID = new Set(['comprehensive_plus']); // 有料モード
 
 const DEFAULT_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
-const DEFAULT_VISION_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
-
-const PALM_VISION_PROMPT =
-  'これは手相鑑定用の手のひらの写真です。実際に画像から見える特徴だけを、できるだけ細かく具体的に日本語の箇条書きで報告してください（推測で線を作らない。見えない/不明瞭な項目は「不明瞭」と書く）。各項目をこの形式で:\n' +
-  '【手の形】手のひらは四角形/長方形のどちらに近いか。指は長い/短い。手の厚み・硬さ・血色の印象。\n' +
-  '【指先・親指】指先の形（尖る/円錐/四角/先広がり）。人差し指と薬指どちらが長いか。親指は大きい/小さい、よく開くか、硬いか。\n' +
-  '【生命線】見えるか。親指の付け根をどの程度大きく囲むか（大きく張り出す/小さい）、濃さ、長さ、二重線の有無。途切れ・島・鎖・向上線（上向きの細い支線）があれば、線の上の方/中ほど/手首寄りの下の方のどこにあるか（流年＝時期の判断に使う）。\n' +
-  '【知能線（頭脳線）】見えるか。真横に直線か下（月丘）へカーブか。長さ（中指下/薬指下/小指下）。起点が生命線とくっつくか離れるか。先端の枝分かれ（二又）の有無。手を横断して小指側へ抜けていないか。\n' +
-  '【感情線】見えるか。終点（人差し指の下/人差し指と中指の間/中指の下）。直線的かカーブか。鎖状・枝分かれの有無。知能線との間隔は広い/狭い。\n' +
-  '【運命線】中指へ向かう縦線が見えるか。濃さ、起点（手首中央/小指側の下＝月丘側/生命線上/知能線あたり）、途切れ・ずれ・支線合流の有無とその高さ（手首寄り/中ほど/感情線付近）。見えなければ「見えない」。\n' +
-  '【太陽線・財運線】薬指の下（太陽線）／小指の下（財運線）に縦線が見えるか。長さ・本数。\n' +
-  '【結婚線】小指の付け根と感情線の間の短い横線。本数、上向き/下向き、二又や島の有無。\n' +
-  '【金星帯】人差し指〜小指の付け根を弧で結ぶ線が見えるか。\n' +
-  '【丘のふくらみ】金星丘(親指付け根)/木星丘(人差し指下)/土星丘(中指下)/太陽丘(薬指下)/水星丘(小指下)/月丘(小指側の下)のうち、特に発達して見えるもの。\n' +
-  '【特殊な印】星(★)・十字・三角・四角・格子・島・魚の形などの印、仏眼(親指第一関節)、マスカケ線(知能線と感情線が一本に繋がり手を横断)が見えるか。\n' +
-  'もし手のひらが写っていない/手の甲だけ/不鮮明で線が読めない場合は、必ず先頭行に「[NOT_PALM]」とだけ書くこと。';
-
-// 候補のビジョンモデル（上から順に試す）。
-// llama-3.2-visionはアカウントでのライセンス同意が必要なため、非ゲートのモデルも併せて試す。
-// kind: 'messages'=image_url(dataURL)形式 / 'llava'=バイト配列+prompt形式。
-// Llama 3.2 Vision（ライセンス同意済み・日本語の特徴抽出が高品質）を優先し、
-// 不調時は非ゲートの llava にフォールバックする。
-const VISION_CANDIDATES = [
-  { model: '@cf/meta/llama-3.2-11b-vision-instruct', kind: 'messages' },
-  { model: '@cf/llava-hf/llava-1.5-7b-hf', kind: 'llava' },
-];
-
-function dataUrlToBytes(u) {
-  const b64 = (u.split(',')[1] || '');
-  const bin = atob(b64);
-  const a = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
-  return [...a];
-}
-
-// 画像＋プロンプトでビジョンモデルを呼ぶ（候補を順に試す）
-async function runVision(env, dataUrl, promptText, maxTokens = 768) {
-  const kindOf = (m) => (m.includes('llava') || m.includes('uform') ? 'llava' : 'messages');
-  const pref = env.PALM_VISION_MODEL
-    ? [{ model: env.PALM_VISION_MODEL, kind: kindOf(env.PALM_VISION_MODEL) }]
-    : [];
-  const list = [...pref, ...VISION_CANDIDATES.filter((c) => !pref.some((p) => p.model === c.model))];
-  let lastErr = null;
-  for (const c of list) {
-    try {
-      let text = '';
-      if (c.kind === 'messages') {
-        const r = await env.AI.run(c.model, {
-          messages: [{ role: 'user', content: [
-            { type: 'text', text: promptText },
-            { type: 'image_url', image_url: { url: dataUrl } },
-          ] }],
-          max_tokens: maxTokens, temperature: 0.1,
-        });
-        text = (r && (r.response || r.result || '')).trim();
-      } else {
-        const r = await env.AI.run(c.model, { image: dataUrlToBytes(dataUrl), prompt: promptText, max_tokens: maxTokens });
-        text = (r && (r.description || r.response || r.result || '')).trim();
-      }
-      if (text) return { model: c.model, text };
-    } catch (e) { lastErr = e; }
-  }
-  throw lastErr || new Error('利用可能なビジョンモデルがありません');
-}
-
-// 厳格判定：写っている主被写体を一語で答えさせる（「手のひらか？」はモデルが"はい"に偏るため不可）。
-const PALM_CLASSIFY_PROMPT =
-  'この写真に写っている主な被写体は何ですか。最も当てはまるものを、短い日本語の名詞ひとつだけで答えてください。' +
-  '例: 手のひら / 手の甲 / 風景 / 空 / 文字 / 人の顔 / 料理 / 動物 / 建物 / 画面 / 物。' +
-  '説明や文章は書かず、名詞ひとつだけを答えること。';
-
-// 手のひらか判定（true=手のひらのみ）。手の甲・それ以外・曖昧はすべて false（＝弾く）。
-async function classifyPalm(env, dataUrl) {
-  const { text } = await runVision(env, dataUrl, PALM_CLASSIFY_PROMPT, 24);
-  const t = (text || '').toLowerCase();
-  const backOrOther = /甲|背|back/.test(t);
-  const isPalm = !backOrOther && (/手のひら|掌|手相|ての?ひら|palm/.test(t) || (/(^|[^の])手|hand/.test(t) && !/甲|背/.test(t)));
-  return { isPalm, raw: text };
-}
-
-// 写真から手相の特徴を抽出
-async function extractPalmFeatures(env, dataUrl) {
-  return runVision(env, dataUrl, PALM_VISION_PROMPT, 1000);
-}
 
 const json = (obj, status = 200) =>
   new Response(JSON.stringify(obj), {
@@ -141,45 +58,18 @@ export async function onRequestPost(context) {
     try { calibWeights = (await getCalibration(env.DB)).weights; } catch { calibWeights = {}; }
   }
 
-  // 0.5) 手相：利き手（必須）＋反対の手（任意）の写真から特徴を抽出（ビジョンモデル）
+  // 0.5) 手相（無料・単体）：両手の写真から特徴を抽出（ビジョンモデル）。
+  //   ※総合鑑定は決済前(checkout)に抽出済みで、answers に palmFeatures/palmFeatures2 が入る。
   let palmFeatures = null, palmFeatures2 = null, palmVisionModel = null;
   if (divination === 'palm') {
-    const isDataImg = (s) => typeof s === 'string' && /^data:image\/(png|jpe?g|webp);base64,/i.test(s);
-    const img = answers && answers.palmImage;
-    if (!isDataImg(img)) {
-      return json({ error: '利き手の手のひらの写真（JPEG/PNG）をアップロードしてください' }, 400);
-    }
-    if (!env.AI) return json({ error: '画像の解析が利用できません（AI未設定）' }, 503);
-    const RETAKE = '手のひらの写真として読み取れませんでした。手のひら全体（指先まで）がはっきり写るように、明るい場所で手を少し広げて撮った写真をアップロードしてください。';
-    // 1枚を「手のひら判定→特徴抽出」する。手でなければ null を返す（呼び出し側で扱い分け）
-    const readOneHand = async (image) => {
-      try { const cls = await classifyPalm(env, image); if (!cls.isPalm) return { palm: false }; } catch { /* 判定失敗は抽出の[NOT_PALM]に委ねる */ }
-      const v = await extractPalmFeatures(env, image);
-      if (/^\s*\[NOT_PALM\]/.test(v.text)) return { palm: false };
-      return { palm: true, text: v.text, model: v.model };
-    };
-    // 利き手（必須）
-    let dom;
-    try { dom = await readOneHand(img); } catch (e) {
-      return json({ error: '画像の解析に失敗しました。明るい場所で撮り直してお試しください。', detail: String(e.message || e) }, 200);
-    }
-    if (!dom.palm) {
-      return json({ divination, title: '手相', data: {}, meta: {}, reading: RETAKE, disclaimer: DISCLAIMER, readingId: null });
-    }
-    palmFeatures = dom.text; palmVisionModel = dom.model;
-    // 反対の手（必須）。両手を見比べて鑑定する
-    const img2 = answers && answers.palmImage2;
-    if (!isDataImg(img2)) {
-      return json({ error: '反対の手の手のひらの写真もアップロードしてください（両手で鑑定します）' }, 400);
-    }
-    let oth;
-    try { oth = await readOneHand(img2); } catch (e) {
-      return json({ error: '反対の手の画像の解析に失敗しました。明るい場所で撮り直してお試しください。', detail: String(e.message || e) }, 200);
-    }
-    if (!oth.palm) {
-      return json({ divination, title: '手相', data: {}, meta: {}, reading: '反対の手の写真が手のひらとして読み取れませんでした。' + RETAKE, disclaimer: DISCLAIMER, readingId: null });
-    }
-    palmFeatures2 = oth.text;
+    const res = await processPalmHands(env, answers);
+    if (res.error) return json({ error: res.error, detail: res.detail }, res.error.includes('AI未設定') ? 503 : 400);
+    if (res.retake) return json({ divination, title: '手相', data: {}, meta: {}, reading: res.retake, disclaimer: DISCLAIMER, readingId: null });
+    palmFeatures = res.features; palmFeatures2 = res.features2; palmVisionModel = res.model;
+  } else if (divination.startsWith('comprehensive')) {
+    // 総合鑑定: checkoutで保存された手相の特徴テキストを使う（画像は保存していない）
+    palmFeatures = (answers && answers.palmFeatures) || null;
+    palmFeatures2 = (answers && answers.palmFeatures2) || null;
   }
 
   // 1) 確定計算（命式・チャート・カード／手相は特徴テキストを材料化）
