@@ -225,6 +225,36 @@ export const DIVINATIONS = [
           { value: 'low', label: '低い' }, { value: 'mid', label: '中くらい' }, { value: 'high', label: '高い' },
         ],
       },
+      // ② 行動データ：同じ運気でも「どう動くか」を本人仕様に（任意）
+      {
+        key: 'decisionStyle', label: '意思決定のスタイル', type: 'select', required: false,
+        help: '同じ運気でも助言の出し方を変えます（攻める人／守る人）。任意',
+        options: [
+          { value: 'bold', label: 'チャンスは積極的に攻めたい' },
+          { value: 'balanced', label: '状況を見て柔軟に決めたい' },
+          { value: 'cautious', label: 'リスクは抑えて堅実に進めたい' },
+        ],
+      },
+      {
+        key: 'capacity', label: '今の余力・多忙度', type: 'select', required: false,
+        help: '予測を“実行できる現実的な一手”に落とすために使います。任意',
+        options: [
+          { value: 'slack', label: '新しいことに動ける余裕がある' },
+          { value: 'normal', label: 'ふつう' },
+          { value: 'busy', label: 'かなり忙しく余力が少ない' },
+        ],
+      },
+      {
+        key: 'focus', label: '今いちばん視てほしい分野', type: 'select', required: false,
+        help: 'その分野の転機・対策を重点的に掘り下げます。任意',
+        options: [
+          { value: 'キャリア', label: '仕事・キャリア' },
+          { value: '金銭', label: 'お金・収入' },
+          { value: '対人', label: '人間関係・恋愛' },
+          { value: '健康', label: '健康・体調' },
+          { value: 'メンタル', label: '心・メンタル' },
+        ],
+      },
     ],
   },
 ];

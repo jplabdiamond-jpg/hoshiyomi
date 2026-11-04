@@ -278,6 +278,8 @@ export function computeForesight(o) {
   for (const ms of milestones) pushYear(ms.year, SYS.node, ms.name, ms.name === 'サターンリターン'
     ? [{ domain: 'キャリア', pol: 0, why: '基盤の再構築' }, { domain: 'メンタル', pol: -1, why: '重さを感じやすい節目' }]
     : [{ domain: 'キャリア', pol: 0, why: '環境が動く節目' }], `node:${ms.name}`);
+  // ① 個人タイミング（プロフェクション／進行／ソーラーアーク／空亡）を年シグナルに合流
+  for (const ts of (o.timingSignals || [])) pushYear(ts.year, ts.sys, ts.label, ts.domains, ts.pattern);
 
   // 年解像度の合致点（従来互換：ヒートマップ／年タイムライン用）
   const convergence = [];

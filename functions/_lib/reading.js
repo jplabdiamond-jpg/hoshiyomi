@@ -11,6 +11,7 @@ import { computeForesight, summarizeForesight } from './foresight.js';
 import { getDivination, resolveCity, parseDate, parseTime } from './divinations.js';
 import { PALMISTRY_REFERENCE } from './palmistry.js';
 import { rectifyBirthTime } from './rectify.js';
+import { computeTiming, summarizeTiming } from './timing.js';
 
 const JP_TZ = 540; // 日本標準時（分）
 
@@ -156,6 +157,8 @@ export function computeDivination(key, answers, opts = {}) {
     let seimei = null;
     if (answers.sei && answers.mei) seimei = computeSeimei(answers.sei, answers.mei);
     const fengshui = computeFengShui(fp.solarYear, answers.gender);
+    // ① 個人タイミング（プロフェクション／進行／ソーラーアーク／個人天体トランジット／空亡・十二運）
+    const timing = computeTiming({ chart, fp, now: new Date() });
     const risk = assessRisk(answers);
     const profile = computeProfileScore({
       risk, fp, chart, seimei, numerology: num,
@@ -167,6 +170,7 @@ export function computeDivination(key, answers, opts = {}) {
       gender: answers.gender, nowYear: now.getFullYear(), nowMonth: now.getMonth() + 1,
       profileNet: profile.net, calibWeights: opts.calibWeights || {}, specTable: opts.specTable || {},
       pastEvents: parsePastEvents(answers.pastEvents),
+      timingSignals: timing.timingSignals,
     });
 
     // 本人の状況（占術の入力ではなく、アドバイスを具体化する文脈）
@@ -199,6 +203,7 @@ export function computeDivination(key, answers, opts = {}) {
     parts.push('《統計リスク層》\n' + summarizeRisk(risk));
     parts.push('《分野別の偏差（統計＋占いを合算した、平均からのズレ）》\n' + summarizeProfileScore(profile));
     parts.push('《未来予測（流月・パーソナルイヤー・節目・合致点）》\n' + summarizeForesight(foresight));
+    parts.push('《個人タイミング（プロフェクション・二次進行・ソーラーアーク・個人天体トランジット・ソーラー/ルナーリターン・空亡/十二運）》\n' + summarizeTiming(timing));
     if (rectified) {
       const hh = String(rectified.hour).padStart(2, '0'), mm = String(rectified.minute).padStart(2, '0');
       const win = rectified.windowMin >= 60 ? `±${Math.round(rectified.windowMin / 60 * 10) / 10}時間` : `±${rectified.windowMin}分`;
@@ -213,7 +218,7 @@ export function computeDivination(key, answers, opts = {}) {
     return {
       title: '総合鑑定',
       data: {
-        astrology: chart, fourpillars: fp, numerology: num, seimei, fengshui, risk, profile, foresight,
+        astrology: chart, fourpillars: fp, numerology: num, seimei, fengshui, risk, profile, foresight, timing,
         context: { theme: answers.theme, job: answers.job, tenure: answers.tenure, income: answers.income, lifestyle: answers.lifestyle },
       },
       material: parts.join('\n\n'),
@@ -311,12 +316,21 @@ export function buildMessages(key, computed, answers) {
       '  (2) 確度(高/中/低)と「何系統の占術が重なっているか」を自信の根拠として言葉にする。例:「星の巡りと生まれ持った運のリズム、二つが同じ春を指しています。これはかなり確かな転機です」。確度“高”の窓は断定に近いトーンで、確度“低”は「兆し」程度に弱める。\n' +
       '  (3) 各窓で何が動くかを、データの「領域」（キャリア/金銭/対人/健康/メンタル/身体安全）と結びつけ、生活の具体的な情景として描く。例:「人を介した新しい話が舞い込む」「責任ある立場を任される」。領域に“もともと注意／もともと強い”の注記があれば、本人の傾向に重ねて語る。\n' +
       '  (4) 追い風の窓は活かし方を、要注意の窓は不安を煽らず「備えれば越えられるもの」として備え方を添える。\n' +
+      '  (5) 「個人タイミング」データ（プロフェクション＝今年の主題、二次進行の月＝今の感情の季節、ソーラーアーク＝人生の設計図が動く年、個人天体トランジット＝この数ヶ月の具体日、ソーラー/ルナーリターン、空亡・十二運）を必ず織り込み、合致窓を補強する。とくに個人天体トランジットの「◯月◯日ごろ」は“あなた固有の具体日”として1〜2個を名指しで示し、汎用的な一般論に流れないようにする。プロフェクションの「今年は◯ハウス期」と流月・合致窓を結びつけて、今年一年のストーリーの軸にする。\n' +
       '  中長期は「年単位の合致点」、人生の大きな山場はサターンリターン等の節目に触れる。データにない時期・出来事は決して創作しない。\n' +
       '■ 分野別のリスクと対策【重要・具体的に】… 「分野別の偏差」データ（平均=0からのズレ＝統計＋占いの合算）を軸に、偏差が大きい分野から順に。' +
       '各分野で「平均よりどれくらい・なぜズレているか（生活/職業の統計要因か、占いの要因か）」を一言で示し、マイナスは具体的な戻し方、プラスは活かし方を。偏差0は省略可。数値は傾向の目安として扱う。\n' +
       '■ 推奨行動とラッキー方位（今日から始められる具体行動を職業・生活に即して3〜5つ。直近の合致窓に向けた準備を必ず1つ含める。風水の吉方位も使える場面つきで一言）\n' +
       '全体で1500〜1900字程度。「視える」口調は転機のパートで活かし、全体は温かく前向きに。最後は相談者が自分で選べる形の助言で締める。' +
       'データにない出来事・時期・数値を創作しないこと。年収や生活情報は説教や決めつけに使わず、前向きな選択肢と対策の提案に使う。確度や統計は「複数の占術・傾向が重なった度合いの目安」であり絶対の予言ではないと、鑑定の自然な流れの中で一言添える。';
+    // ② 行動データによる個人化：同じ運気でも助言の出し方を本人仕様に調整
+    const bt = [];
+    const ds = { bold: '相談者は「チャンスは積極的に攻めたい」タイプ。追い風の窓は踏み込んだ一手まで提案し、要注意の窓も“止める”より“攻め方を変える/守りを一点だけ固める”形で。', balanced: '相談者は「状況を見て柔軟に」タイプ。攻めと守りを両天秤で、判断材料を示して本人が選べる形に。', cautious: '相談者は「リスクは抑えて堅実に」タイプ。まず守り・備えを厚く、攻めは小さく試す形で無理なく。' }[answers.decisionStyle];
+    const cap = { slack: '今は新しいことに動ける余力あり。直近の合致窓に向けて踏み込んだ準備も提案してよい。', normal: '', busy: '今はかなり多忙で余力が少ない。推奨行動は負担の軽い順に1〜2個へ厳選し、“やめること・手放すこと”も1つ示す。' }[answers.capacity];
+    if (ds) bt.push(ds);
+    if (cap) bt.push(cap);
+    if (answers.focus) bt.push(`相談者が最も視てほしい分野は「${answers.focus}」。この分野を「これから訪れる転機」と「分野別のリスクと対策」で最優先に、他分野より一段厚く掘り下げる（ただし他分野を無視はしない）。`);
+    if (bt.length) instruction += '\n\n【相談者に合わせた出し方（必ず反映）】\n' + bt.map((x) => '・' + x).join('\n');
   }
 
   // 画像base64など巨大な値はプロンプトに入れない（トークン超過の原因になる）
