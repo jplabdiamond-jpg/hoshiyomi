@@ -140,7 +140,7 @@
     quick.innerHTML = '';
     for (const it of items) {
       const b = document.createElement('button');
-      b.type = 'button'; b.className = 'chip' + (it.ghost ? ' ghost' : '');
+      b.type = 'button'; b.className = 'chip' + (it.ghost ? ' ghost' : '') + (it.gold ? ' chip-gold' : '');
       b.textContent = it.label; b.onclick = () => it.onClick();
       quick.appendChild(b);
     }
@@ -168,16 +168,37 @@
     const params = new URLSearchParams(location.search);
     const paid = params.get('paid');
     const canceled = params.get('canceled');
+    const welcome = params.get('welcome');
+    const loggedin = params.get('loggedin');
+    const subErr = params.get('sub_error');
+    const loginErr = params.get('login_error');
+    const subCanceled = params.get('sub_canceled');
     // URLのクエリを消す（二重実行防止）
-    if (paid || canceled) history.replaceState({}, '', location.pathname);
+    if (paid || canceled || welcome || loggedin || subErr || loginErr || subCanceled) history.replaceState({}, '', location.pathname);
     if (paid) {
       await botSay('Sibylla Vision へお帰りなさい。', 300);
       await runPaidReading(paid);
       return;
     }
+    if (welcome === 'sub') { await showMyPage({ welcome: true }); return; }
+    if (loggedin) { await botSay('ログインしました。', 200); await showMyPage(); return; }
+    if (subErr) await botSay('お申込みの確認でエラーが発生しました。お支払いが完了している場合はサポートへご連絡ください。', 300);
+    if (loginErr) await botSay('ログインリンクが無効か期限切れです。もう一度お試しください。', 300);
+    if (subCanceled) await botSay('継続鑑定のお申込みはキャンセルされました。', 300);
     await botSay('Sibylla Vision へようこそ。<br>星の配置・生まれ持った命式に、統計と風水を重ねて、これからの流れをお読みします。<br>まずは占いたいものをお選びください。', 300);
     if (canceled) await botSay('お支払いはキャンセルされました。いつでもまたどうぞ。', 300);
     showPicker();
+    checkReturning();
+  }
+
+  // 継続プランにログイン済み（Cookie有効）なら、マイページへの導線を出す
+  async function checkReturning() {
+    try {
+      const me = await (await fetch('/api/me')).json();
+      if (me && me.loggedIn) {
+        setQuick([{ label: '継続鑑定のマイページを開く', gold: true, onClick: () => showMyPage() }]);
+      }
+    } catch { /* 未ログインは何もしない */ }
   }
 
   function showPicker() {
@@ -188,9 +209,16 @@
       `<button class="pick" data-key="${d.key}"><span class="ic">${ICONS[d.key] || ''}</span>
         <span><span class="ttl">${esc(d.ja)}${d.price ? `<em class="price">¥${d.price.toLocaleString()}</em>` : ''}</span><span class="tag">${esc(d.tagline)}</span></span></button>`
     ).join('');
-    wrap.innerHTML = `<div class="avatar">${SIGIL}</div><div class="bubble" style="width:100%"><div class="picker">${cards}</div></div>`;
+    const subCta = `<div class="sub-cta">
+        <button class="pick pick-sub" data-key="subscribe"><span class="ic">${SIGIL}</span>
+          <span><span class="ttl">継続鑑定<em class="price">¥980／月</em></span>
+          <span class="tag">毎月あなたの星回りで鑑定を更新。予測の“答え合わせ”であなた専用に精度が育つ継続プラン。</span></span></button>
+        <button class="sub-login ghost" type="button">継続プランにログイン</button>
+      </div>`;
+    wrap.innerHTML = `<div class="avatar">${SIGIL}</div><div class="bubble" style="width:100%"><div class="picker">${cards}</div>${subCta}</div>`;
     chat.appendChild(wrap); scroll();
     wrap.querySelectorAll('.pick').forEach((b) => b.onclick = () => chooseDivination(b.dataset.key));
+    const lg = wrap.querySelector('.sub-login'); if (lg) lg.onclick = () => promptLogin();
   }
 
   function showInfoPopup(text) {
@@ -209,7 +237,9 @@
   }
 
   async function chooseDivination(key) {
+    if (key === 'subscribe') return startSubscribe();
     const d = DIVS.find((x) => x.key === key); if (!d) return;
+    state.subscribe = false;
     state.div = d; state.fields = d.fields; state.idx = 0; state.answers = {}; state.stage = 'collecting';
     bubble('user', esc(d.ja));
     // 詳細プラン（有料）は入力の価値を先に伝える
@@ -385,6 +415,8 @@
   }
 
   async function runReading() {
+    // 継続鑑定（サブスク）の申込みへ
+    if (state.subscribe) return goSubCheckout();
     // 有料モードは決済へ
     if (state.div && state.div.price) return goCheckout();
     // タロットは演出（シャッフル→配布→めくり）を挟む
@@ -595,6 +627,137 @@
     } catch {
       t.remove(); await botSay('決済サーバーに接続できませんでした。少し時間をおいて再度お試しください。'); offerRestart();
     }
+  }
+
+  // ── ③ 継続鑑定（サブスク） ──
+  async function startSubscribe() {
+    const base = DIVS.find((x) => x.key === 'comprehensive_plus');
+    if (!base) { await botSay('継続プランの準備中です。少し時間をおいてお試しください。'); return; }
+    state.subscribe = true;
+    state.div = { ...base, key: 'comprehensive_plus', ja: '継続鑑定（月額）' };
+    state.fields = base.fields; state.idx = 0; state.answers = {}; state.stage = 'collecting';
+    bubble('user', '継続鑑定（¥980／月）');
+    await botSay('継続鑑定（<b>¥980／月</b>）ですね。毎月あなたの星回りで鑑定を更新し、予測の“答え合わせ”を続けるほどあなた専用に精度が育ちます。<br>まず鑑定の基礎情報をうかがいます（初回のみ・以降は自動で引き継ぎます）。', 600);
+    await botSay('項目を埋めるほど精度が上がります。答えたくない任意項目はスキップできます。', 400);
+    askNext();
+  }
+
+  async function goSubCheckout() {
+    state.stage = 'reading';
+    input.disabled = true; clearQuick(); showInput(false);
+    const usesPalm = !!(state.answers.palmImage || state.answers.palmImage2);
+    const prep = usesPalm ? '手相を読み取り、お支払いページ（Stripe）を準備しています…' : 'お支払いページ（Stripe）に移動します…';
+    await botSay(`継続鑑定は <b>¥980／月</b> です。${prep}`, 500);
+    const t = typing();
+    try {
+      const r = await fetch('/api/sub/checkout', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ answers: state.answers, anonId }),
+      });
+      const data = await r.json();
+      t.remove();
+      if (!r.ok || !data.url) { await botSay(`お申込みページを開けませんでした。${esc(data.error || data.message || '')}`); offerRestart(); return; }
+      location.href = data.url;
+    } catch {
+      t.remove(); await botSay('サーバーに接続できませんでした。少し時間をおいて再度お試しください。'); offerRestart();
+    }
+  }
+
+  function promptLogin() {
+    const ov = document.createElement('div');
+    ov.className = 'sv-modal-ov';
+    ov.innerHTML = `<div class="sv-modal" role="dialog" aria-modal="true">
+      <div class="sv-modal-ic">${SIGIL}</div>
+      <div class="sv-modal-body">継続プランのメールアドレスを入力してください。ログイン用のリンクをお送りします。</div>
+      <input class="sv-mail" type="email" inputmode="email" placeholder="you@example.com" autocomplete="email" />
+      <button class="sv-modal-ok" type="button">ログインリンクを送る</button>
+      <button class="sv-modal-cancel ghost" type="button">閉じる</button></div>`;
+    document.body.appendChild(ov);
+    const close = () => ov.remove();
+    ov.querySelector('.sv-modal-cancel').onclick = close;
+    ov.addEventListener('click', (e) => { if (e.target === ov) close(); });
+    ov.querySelector('.sv-modal-ok').onclick = async () => {
+      const email = (ov.querySelector('.sv-mail').value || '').trim();
+      if (!email) return;
+      ov.querySelector('.sv-modal-ok').disabled = true;
+      try {
+        const r = await fetch('/api/auth/request', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email }) });
+        const data = await r.json();
+        close();
+        await botSay(esc(data.message || 'ログインリンクをお送りしました。メールをご確認ください。'), 300);
+      } catch { close(); await botSay('送信に失敗しました。少し時間をおいてお試しください。'); }
+    };
+  }
+
+  // マイページ（ログイン済み）: サブスク状態・今月の鑑定・答え合わせ・推移
+  async function showMyPage(opts = {}) {
+    clearQuick(); showInput(false);
+    const t = typing();
+    let me;
+    try { me = await (await fetch('/api/me')).json(); } catch { me = { loggedIn: false }; }
+    t.remove();
+    if (!me.loggedIn) { await botSay('ログイン情報が確認できませんでした。もう一度ログインしてください。', 300); showPicker(); return; }
+    if (opts.welcome) await botSay('ご登録ありがとうございます。継続鑑定へようこそ。', 300);
+
+    const periodTxt = me.periodEnd ? new Date(me.periodEnd * 1000).toLocaleDateString('ja-JP') : '—';
+    const statusTxt = me.active ? `有効（次回更新 ${periodTxt}）` : '停止中';
+    const wrap = document.createElement('div');
+    wrap.className = 'msg bot';
+    const pend = (me.pending || []).map((p) => `
+      <div class="pc-item" data-id="${p.id}">
+        <div class="pc-q">${esc(p.label)}<span class="pc-due">（${esc(p.due_ym)}の予測）</span></div>
+        <div class="pc-btns">
+          <button class="pc-b" data-o="hit">当たった</button>
+          <button class="pc-b" data-o="partial">半分</button>
+          <button class="pc-b" data-o="miss">外れた</button>
+        </div></div>`).join('');
+    wrap.innerHTML = `<div class="avatar">${SIGIL}</div><div class="bubble" style="width:100%">
+      <div class="mypage">
+        <div class="mp-head">マイページ <span class="mp-mail">${esc(me.email)}</span></div>
+        <div class="mp-status">サブスク: <b>${statusTxt}</b></div>
+        ${me.pending && me.pending.length ? `<div class="mp-sec"><div class="mp-sec-t">予測の答え合わせ（続けるほど精度が上がります）</div>${pend}</div>` : ''}
+        <div class="mp-actions">
+          <button class="mp-refresh gold">${me.dueThisMonth ? '今月の鑑定を受け取る' : '最新の鑑定を見る'}</button>
+          <button class="mp-portal ghost">お支払い・解約</button>
+          <button class="mp-logout ghost">ログアウト</button>
+        </div>
+        <div class="mp-reading"></div>
+      </div></div>`;
+    chat.appendChild(wrap); scroll();
+
+    wrap.querySelectorAll('.pc-item').forEach((it) => {
+      it.querySelectorAll('.pc-b').forEach((b) => b.onclick = async () => {
+        it.querySelectorAll('.pc-b').forEach((x) => x.disabled = true);
+        try {
+          await fetch('/api/predictions/check', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: it.dataset.id, outcome: b.dataset.o }) });
+          it.innerHTML = '<div class="pc-done">✓ 記録しました。ありがとうございます（次回の鑑定に反映されます）。</div>';
+        } catch { it.querySelectorAll('.pc-b').forEach((x) => x.disabled = false); }
+      });
+    });
+    wrap.querySelector('.mp-logout').onclick = async () => { try { await fetch('/api/auth/logout', { method: 'POST' }); } catch {} location.href = '/'; };
+    wrap.querySelector('.mp-portal').onclick = async () => {
+      try { const d = await (await fetch('/api/sub/portal', { method: 'POST' })).json(); if (d.url) location.href = d.url; else await botSay(esc(d.error || 'ポータルを開けませんでした。')); } catch { await botSay('接続に失敗しました。'); }
+    };
+    const rd = wrap.querySelector('.mp-reading');
+    wrap.querySelector('.mp-refresh').onclick = async () => {
+      const btn = wrap.querySelector('.mp-refresh'); btn.disabled = true; btn.textContent = '鑑定中…';
+      rd.innerHTML = '<div class="mp-loading">星を読み解いています…</div>';
+      try {
+        const d = await (await fetch('/api/sub/refresh', { method: 'POST' })).json();
+        if (d.error) { rd.innerHTML = `<div class="mp-err">${esc(d.message || d.error)}</div>`; btn.disabled = false; btn.textContent = '再試行'; return; }
+        let diffHtml = '';
+        if (d.diff && (d.diff.added?.length || d.diff.gone?.length)) {
+          const add = (d.diff.added || []).map((x) => `<li class="d-add">新たに浮上：${esc(x.label)}（確度${esc(x.level)}）</li>`).join('');
+          const gone = (d.diff.gone || []).map((x) => `<li class="d-gone">収束：${esc(x.label)}</li>`).join('');
+          diffHtml = `<div class="mp-diff"><div class="mp-sec-t">前回からの変化（推移）</div><ul>${add}${gone}</ul></div>`;
+        }
+        rd.innerHTML = `${diffHtml}<div class="result"><div class="rbody">${formatReading(d.reading)}</div><div class="disc">${esc(d.disclaimer || '')}</div></div>`;
+        btn.textContent = '最新の鑑定を見る'; btn.disabled = false;
+        rd.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      } catch { rd.innerHTML = '<div class="mp-err">接続に失敗しました。</div>'; btn.disabled = false; btn.textContent = '再試行'; }
+    };
+    // 初回ウェルカム時は自動で今月分を生成
+    if (opts.welcome && me.dueThisMonth) wrap.querySelector('.mp-refresh').click();
   }
 
   // 決済成功後の戻り（?paid=<session>&order=...）で鑑定を実行
