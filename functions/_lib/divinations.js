@@ -113,8 +113,8 @@ export const DIVINATIONS = [
         help: '利き手（今の自分・これからの運）。明るい場所で手のひら全体（指先まで）がはっきり写るように撮ってください。',
       },
       {
-        key: 'palmImage2', label: '反対の手の手のひらの写真（任意）', type: 'image', required: false,
-        help: '反対の手（生まれ持った性質）。両手あると「生来の自分→今→これから」の変化まで読めます。片手だけでもOK。',
+        key: 'palmImage2', label: '反対の手の手のひらの写真', type: 'image', required: true,
+        help: '反対の手（生まれ持った性質）。両手を見比べることで「生来の自分→今→これから」の変化まで読みます。',
       },
       { key: 'question', label: '気になっていること（任意）', type: 'text', required: false, help: '例）仕事／恋愛／健康 など。スキップ可' },
     ],

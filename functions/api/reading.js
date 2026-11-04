@@ -167,11 +167,19 @@ export async function onRequestPost(context) {
       return json({ divination, title: '手相', data: {}, meta: {}, reading: RETAKE, disclaimer: DISCLAIMER, readingId: null });
     }
     palmFeatures = dom.text; palmVisionModel = dom.model;
-    // 反対の手（任意）。読めない場合は無視して片手鑑定にする
+    // 反対の手（必須）。両手を見比べて鑑定する
     const img2 = answers && answers.palmImage2;
-    if (isDataImg(img2)) {
-      try { const other = await readOneHand(img2); if (other.palm) palmFeatures2 = other.text; } catch { /* 2枚目は失敗しても続行 */ }
+    if (!isDataImg(img2)) {
+      return json({ error: '反対の手の手のひらの写真もアップロードしてください（両手で鑑定します）' }, 400);
     }
+    let oth;
+    try { oth = await readOneHand(img2); } catch (e) {
+      return json({ error: '反対の手の画像の解析に失敗しました。明るい場所で撮り直してお試しください。', detail: String(e.message || e) }, 200);
+    }
+    if (!oth.palm) {
+      return json({ divination, title: '手相', data: {}, meta: {}, reading: '反対の手の写真が手のひらとして読み取れませんでした。' + RETAKE, disclaimer: DISCLAIMER, readingId: null });
+    }
+    palmFeatures2 = oth.text;
   }
 
   // 1) 確定計算（命式・チャート・カード／手相は特徴テキストを材料化）
