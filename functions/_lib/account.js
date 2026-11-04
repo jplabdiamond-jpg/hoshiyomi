@@ -98,7 +98,7 @@ export async function consumeMagicToken(DB, token) {
 // メール送信（Resend があれば送信、無ければ送れないことを返す）。失敗しても例外は投げない。
 export async function sendMagicEmail(env, email, link) {
   const key = env.RESEND_API_KEY;
-  const from = env.MAIL_FROM || 'Sibylla Vision <login@sibylla.vision>';
+  const from = env.MAIL_FROM || 'Sibylla Vision <noreply@sibylla-vision.com>';
   if (!key) return { sent: false, reason: 'no_provider' };
   try {
     const r = await fetch('https://api.resend.com/emails', {
