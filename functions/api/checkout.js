@@ -4,6 +4,7 @@
 import { ensureSchema } from '../_lib/db.js';
 import { createCheckoutSession } from '../_lib/stripe.js';
 import { processPalmHands } from '../_lib/palm.js';
+import { getDivination } from '../_lib/divinations.js';
 
 const json = (obj, status = 200) =>
   new Response(JSON.stringify(obj), { status, headers: { 'content-type': 'application/json; charset=utf-8' } });
@@ -22,16 +23,22 @@ export async function onRequestPost(context) {
   let answers = b?.answers;
   if (!answers) return json({ error: 'answers は必須です' }, 400);
 
-  // 手相（両手）を決済前に解析し、画像を特徴テキストに置き換えてから注文を保存する
-  // （画像base64は大きく保存できないため、また不備な写真で課金させないため）
-  try {
-    const palm = await processPalmHands(env, answers);
-    if (palm.error) return json({ error: palm.error, detail: palm.detail }, 400);
-    if (palm.retake) return json({ error: palm.retake }, 400);
-    answers = { ...answers, palmFeatures: palm.features, palmFeatures2: palm.features2 };
-    delete answers.palmImage; delete answers.palmImage2;
-  } catch (e) {
-    return json({ error: '手相の画像解析に失敗しました。明るい場所で撮り直してお試しください。', detail: String(e.message || e) }, 200);
+  const divination = b.divination || 'comprehensive_plus';
+  const div = getDivination(divination);
+  if (!div || !div.price) return json({ error: 'このプランは有料ではありません' }, 400);
+
+  // 手相を使う占術（palmImageを持つ）は、決済前に両手を解析し、画像を特徴テキストに置き換える
+  // （画像base64は大きく保存できないため／不備な写真で課金させないため）
+  if (answers.palmImage || answers.palmImage2) {
+    try {
+      const palm = await processPalmHands(env, answers);
+      if (palm.error) return json({ error: palm.error, detail: palm.detail }, 400);
+      if (palm.retake) return json({ error: palm.retake }, 400);
+      answers = { ...answers, palmFeatures: palm.features, palmFeatures2: palm.features2 };
+      delete answers.palmImage; delete answers.palmImage2;
+    } catch (e) {
+      return json({ error: '手相の画像解析に失敗しました。明るい場所で撮り直してお試しください。', detail: String(e.message || e) }, 200);
+    }
   }
 
   try {
@@ -39,11 +46,13 @@ export async function onRequestPost(context) {
     const orderId = crypto.randomUUID();
     await env.DB.prepare(
       'INSERT INTO orders (id, anon_id, divination, answers_json, status) VALUES (?, ?, ?, ?, ?)'
-    ).bind(orderId, b.anonId || null, 'comprehensive_plus', JSON.stringify(answers).slice(0, 6000), 'pending').run();
+    ).bind(orderId, b.anonId || null, divination, JSON.stringify(answers).slice(0, 6000), 'pending').run();
 
     const origin = new URL(request.url).origin;
     const session = await createCheckoutSession(env.STRIPE_SECRET_KEY, {
       orderId,
+      amount: div.price,
+      name: `Sibylla Vision ${div.ja}`,
       successUrl: `${origin}/?paid={CHECKOUT_SESSION_ID}&order=${orderId}`,
       cancelUrl: `${origin}/?canceled=1`,
     });

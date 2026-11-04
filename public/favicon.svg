@@ -1,0 +1,16 @@
+<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Sibylla Vision">
+  <defs>
+    <radialGradient id="bg" cx="38%" cy="30%" r="80%">
+      <stop offset="0%" stop-color="#1a1d33"/>
+      <stop offset="100%" stop-color="#0b0d17"/>
+    </radialGradient>
+  </defs>
+  <rect width="48" height="48" rx="10" fill="url(#bg)"/>
+  <g fill="none" stroke="#e3c88d" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="24" cy="24" r="17" stroke-width="1" opacity="0.55"/>
+    <path d="M9 24C13.5 18 18.5 15.8 24 15.8C29.5 15.8 34.5 18 39 24C34.5 30 29.5 32.2 24 32.2C18.5 32.2 13.5 30 9 24Z" stroke-width="1.6"/>
+    <circle cx="24" cy="24" r="4.4" stroke-width="1.6"/>
+    <path d="M24 11V7M24 41V37" stroke-width="1.3"/>
+  </g>
+  <path d="M24 18.6L25.3 22.7L29.4 24L25.3 25.3L24 29.4L22.7 25.3L18.6 24L22.7 22.7L24 18.6Z" fill="#e3c88d"/>
+</svg>

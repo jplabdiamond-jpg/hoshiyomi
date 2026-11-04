@@ -575,12 +575,14 @@
     state.stage = 'reading';
     input.disabled = true; clearQuick(); showInput(false);
     const price = state.div.price;
-    await botSay(`総合鑑定は <b>¥${price.toLocaleString()}</b> の有料鑑定です。<br>手相を読み取り、お支払いページ（Stripe）を準備しています…（少々お待ちください）`, 500);
+    const usesPalm = !!(state.answers.palmImage || state.answers.palmImage2);
+    const prep = usesPalm ? '手相を読み取り、お支払いページ（Stripe）を準備しています…（少々お待ちください）' : 'お支払いページ（Stripe）に移動します…';
+    await botSay(`${esc(state.div.ja)}は <b>¥${price.toLocaleString()}</b> の有料鑑定です。<br>${prep}`, 500);
     const t = typing();
     try {
       const r = await fetch('/api/checkout', {
         method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ answers: state.answers, anonId }),
+        body: JSON.stringify({ divination: state.div.key, answers: state.answers, anonId }),
       });
       const data = await r.json();
       t.remove();

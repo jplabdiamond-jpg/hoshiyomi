@@ -8,11 +8,11 @@ function auth(key) {
 }
 
 // Checkout セッションを作成し、支払いURLを返す
-export async function createCheckoutSession(key, { orderId, successUrl, cancelUrl, amount = PRICE_JPY }) {
+export async function createCheckoutSession(key, { orderId, successUrl, cancelUrl, amount = PRICE_JPY, name = 'Sibylla Vision 総合鑑定' }) {
   const body = new URLSearchParams();
   body.append('mode', 'payment');
   body.append('line_items[0][price_data][currency]', 'jpy');
-  body.append('line_items[0][price_data][product_data][name]', 'Sibylla Vision 総合鑑定');
+  body.append('line_items[0][price_data][product_data][name]', name);
   body.append('line_items[0][price_data][unit_amount]', String(amount));
   body.append('line_items[0][quantity]', '1');
   body.append('success_url', successUrl);

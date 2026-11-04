@@ -101,7 +101,9 @@ export const DIVINATIONS = [
     key: 'palm',
     ja: '手相',
     icon: '🖐',
-    tagline: '手のひらの写真から性質と運の流れを読む（両手で生来→今の変化まで）',
+    price: 500,
+    tagline: '両手の写真から、生まれ持った性質と今の運を読む（生来→今の変化まで）',
+    privacyNote: '手のひらの写真は手相鑑定のためだけに使い、サーバーには保存しません（解析後に破棄）。',
     fields: [
       {
         key: 'hand', label: '利き手はどちらですか', type: 'select', required: true,
