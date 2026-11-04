@@ -414,23 +414,51 @@
     <circle cx="100" cy="100" r="30" stroke-width="0.6" opacity=".5"/>
   </svg>`;
 
-  // 裏返り時に、カードから光の粒子が弾け飛ぶ
-  function sparkleBurst(slot) {
-    const tz = slot.querySelector('.tz'); if (!tz) return;
-    const burst = document.createElement('div'); burst.className = 'ts-spark-burst';
-    const n = 12;
+  // カードのレアリティ（演出の強さ）: 大アルカナ > 宮廷札 > 数札
+  function cardRarity(c) {
+    if (!c) return 'pip';
+    if (c.arcana === '大アルカナ') return 'major';
+    if (typeof c.number === 'number' && c.number >= 11) return 'court';
+    return 'pip';
+  }
+
+  // 光の粒子が爆発的に弾け飛ぶ
+  function burstParticles(tz, n, rare) {
+    const burst = document.createElement('div'); burst.className = 'fx-spark';
     for (let i = 0; i < n; i++) {
-      const a = (i / n) * 360 + (Math.random() * 24 - 12);
-      const dist = 46 + Math.random() * 70;
+      const a = (i / n) * 360 + (Math.random() * 30 - 15);
+      const dist = 60 + Math.random() * (rare === 'major' ? 130 : 85);
       const s = document.createElement('i');
       s.style.setProperty('--tx', (Math.cos(a * Math.PI / 180) * dist).toFixed(1) + 'px');
       s.style.setProperty('--ty', (Math.sin(a * Math.PI / 180) * dist).toFixed(1) + 'px');
-      s.style.setProperty('--dl', (Math.random() * 0.12).toFixed(2) + 's');
-      s.style.setProperty('--sz', (3 + Math.random() * 4).toFixed(1) + 'px');
+      s.style.setProperty('--dl', (Math.random() * 0.14).toFixed(2) + 's');
+      s.style.setProperty('--sz', (3.5 + Math.random() * (rare === 'major' ? 6 : 4)).toFixed(1) + 'px');
       burst.appendChild(s);
     }
     tz.appendChild(burst);
-    setTimeout(() => burst.remove(), 1300);
+    setTimeout(() => burst.remove(), 1500);
+  }
+
+  // ド派手なガチャ出現演出（衝撃波・光条・光柱・粒子・レア表示・画面フラッシュ）
+  function gachaReveal(slot, card) {
+    const tz = slot.querySelector('.tz'); if (!tz) return;
+    const r = cardRarity(card); slot.classList.add('rare-' + r);
+    const rings = r === 'major' ? 3 : r === 'court' ? 2 : 1;
+    for (let k = 0; k < rings; k++) {
+      const sh = document.createElement('div'); sh.className = 'fx-shock';
+      sh.style.animationDelay = (k * 0.11).toFixed(2) + 's';
+      tz.appendChild(sh);
+    }
+    const rays = document.createElement('div'); rays.className = 'fx-rays-burst'; tz.appendChild(rays);
+    burstParticles(tz, r === 'major' ? 30 : r === 'court' ? 20 : 13, r);
+    if (r === 'major') {
+      const beam = document.createElement('div'); beam.className = 'fx-beam'; tz.appendChild(beam);
+      const stage = slot.closest('.tarot-stage');
+      if (stage) { const fl = document.createElement('div'); fl.className = 'fx-flash'; stage.appendChild(fl); setTimeout(() => fl.remove(), 700); }
+    }
+    setTimeout(() => {
+      tz.querySelectorAll('.fx-shock,.fx-rays-burst,.fx-beam,.fx-spark').forEach((e) => e.remove());
+    }, 1900);
   }
 
   async function runTarotReading() {
@@ -522,10 +550,11 @@
     // 1枚ずつ、光とともにめくる（ガチャ）
     setCap('✦ カードが開かれます ✦');
     for (let i = 0; i < slots.length; i++) {
+      if (!reduceMotion) { slots[i].classList.add('charging'); await wait(count > 3 ? 120 : 180); slots[i].classList.remove('charging'); }
       slots[i].classList.add('revealed', 'pop');
-      if (!reduceMotion) setTimeout(() => sparkleBurst(slots[i]), 380);
+      if (!reduceMotion) setTimeout(() => gachaReveal(slots[i], cards[i]), 470);
       scroll();
-      if (!reduceMotion) await wait(count > 3 ? 400 : 680);
+      if (!reduceMotion) await wait(count > 3 ? 430 : 650);
     }
     await wait(reduceMotion ? 0 : 560);
     stage.classList.add('settled'); // エフェクトを静める
