@@ -647,6 +647,31 @@
     offerRestart();
   }
 
+  // 手相スキャン演出：送られた手のひら写真の上をゴールドの光が走査する（読み取り中）
+  function palmScanStage() {
+    const imgs = [state.answers.palmImage, state.answers.palmImage2].filter(Boolean);
+    if (!imgs.length) return null;
+    const wrap = document.createElement('div');
+    wrap.className = 'msg bot stagemsg';
+    const cells = imgs.map((src, i) => {
+      const label = imgs.length > 1 ? (i === 0 ? '利き手' : '反対の手') : '手のひら';
+      const motes = reduceMotion ? '' : Array.from({ length: 10 }, () => {
+        const x = (Math.random() * 100).toFixed(1), y = (Math.random() * 100).toFixed(1), d = (Math.random() * 2.4).toFixed(2), s = (6 + Math.random() * 8).toFixed(0);
+        return `<b style="left:${x}%;top:${y}%;--d:${d}s;font-size:${s}px">✦</b>`;
+      }).join('');
+      return `<figure class="pscan-cell${reduceMotion ? ' still' : ''}">
+          <img src="${src}" alt="${label}">
+          <span class="pscan-line"></span><span class="pscan-grid"></span><span class="pscan-motes">${motes}</span>
+          <figcaption>${label}</figcaption>
+        </figure>`;
+    }).join('');
+    wrap.innerHTML = `<div class="bubble" style="width:100%;padding:0;background:transparent;border:none;box-shadow:none">
+        <div class="pscan"><div class="pscan-row">${cells}</div>
+        <div class="pscan-cap">手のひらを読み取っています…</div></div></div>`;
+    chat.appendChild(wrap); scroll();
+    return wrap;
+  }
+
   async function goCheckout() {
     state.stage = 'reading';
     input.disabled = true; clearQuick(); showInput(false);
@@ -654,21 +679,26 @@
     const usesPalm = !!(state.answers.palmImage || state.answers.palmImage2);
     const prep = usesPalm ? '手相を読み取り、お支払いページ（Stripe）を準備しています…（少々お待ちください）' : 'お支払いページ（Stripe）に移動します…';
     await botSay(`${esc(state.div.ja)}は <b>¥${price.toLocaleString()}</b> の有料鑑定です。<br>${prep}`, 500);
-    const t = typing();
+    const scan = usesPalm ? palmScanStage() : null;
+    const t = scan ? null : typing();
     try {
       const r = await fetch('/api/checkout', {
         method: 'POST', headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ divination: state.div.key, answers: state.answers, anonId }),
       });
       const data = await r.json();
-      t.remove();
+      if (t) t.remove(); if (scan) scan.remove();
+      if (r.status === 422 && data.error === 'palm_retake') {
+        await botSay(esc(data.message || '手のひらの写真をうまく読み取れませんでした。明るい場所で撮り直してください。')); offerRestart(); return;
+      }
       if (!r.ok || !data.url) {
         await botSay(`決済ページを開けませんでした。${esc(data.error || data.message || '')}`); offerRestart(); return;
       }
       sessionStorage.setItem('sv_pending', '1');
       location.href = data.url; // Stripe Checkout へ
     } catch {
-      t.remove(); await botSay('決済サーバーに接続できませんでした。少し時間をおいて再度お試しください。'); offerRestart();
+      if (t) t.remove(); if (scan) scan.remove();
+      await botSay('決済サーバーに接続できませんでした。少し時間をおいて再度お試しください。'); offerRestart();
     }
   }
 
