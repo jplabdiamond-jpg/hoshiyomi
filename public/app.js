@@ -116,23 +116,47 @@
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   // 画像を端末内で縮小し JPEG dataURL にする（アップロード容量を抑える）
+  // 鮮明度の目安：縮小グレースケール上でラプラシアン応答の分散を取る（大きいほどシャープ）。
+  // 解像度非依存にするため固定の解析サイズ（長辺560px）で評価する。
+  function sharpnessScore(im, srcW, srcH) {
+    try {
+      const A = 560, s = Math.min(1, A / Math.max(srcW, srcH));
+      const w = Math.max(1, Math.round(srcW * s)), h = Math.max(1, Math.round(srcH * s));
+      const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+      const cx = cv.getContext('2d'); cx.drawImage(im, 0, 0, w, h);
+      const d = cx.getImageData(0, 0, w, h).data;
+      const g = new Float32Array(w * h);
+      for (let i = 0, p = 0; i < d.length; i += 4, p++) g[p] = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+      let sum = 0, sum2 = 0, n = 0;
+      for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+        const p = y * w + x;
+        const lap = 4 * g[p] - g[p - 1] - g[p + 1] - g[p - w] - g[p + w];
+        sum += lap; sum2 += lap * lap; n++;
+      }
+      if (!n) return 0;
+      const mean = sum / n;
+      return sum2 / n - mean * mean; // variance
+    } catch { return null; } // 計測不能時はnull（＝警告しない）
+  }
   function downscaleImage(file, maxDim, quality) {
     return new Promise((resolve, reject) => {
       const url = URL.createObjectURL(file);
       const im = new Image();
       im.onload = () => {
-        URL.revokeObjectURL(url);
         let w = im.naturalWidth, h = im.naturalHeight;
+        const sharp = sharpnessScore(im, w, h);
         const scale = Math.min(1, maxDim / Math.max(w, h));
         w = Math.max(1, Math.round(w * scale)); h = Math.max(1, Math.round(h * scale));
         const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
         cv.getContext('2d').drawImage(im, 0, 0, w, h);
-        resolve(cv.toDataURL('image/jpeg', quality));
+        URL.revokeObjectURL(url);
+        resolve({ dataUrl: cv.toDataURL('image/jpeg', quality), sharpness: sharp, w, h });
       };
       im.onerror = () => { URL.revokeObjectURL(url); reject(new Error('load')); };
       im.src = url;
     });
   }
+  var BLUR_THRESHOLD = 90; // これ未満はブレ/ピンボケの疑い（撮り直しを推奨）
   async function botSay(html, delay = 500) {
     const t = typing(); await wait(delay); t.remove(); return bubble('bot', html);
   }
@@ -282,11 +306,21 @@
       const wrap = document.createElement('div'); wrap.className = 'msg bot';
       wrap.innerHTML = `<div class="avatar">${SIGIL}</div><div class="bubble" style="width:100%">
         <div class="img-box">
+          <div class="img-guide">
+            <div class="img-guide-ttl">📸 きれいに撮るコツ</div>
+            <ul>
+              <li>手のひら全体（指先〜手首まで）を枠いっぱいに</li>
+              <li>明るい場所で、影が入らないように</li>
+              <li>手を少し反らし気味に広げ、線をはっきりと</li>
+              <li>ピントを合わせ、ブレないように固定して撮影</li>
+            </ul>
+          </div>
           <label class="img-pick">
             <input type="file" accept="image/*" capture="environment" hidden>
             <span class="img-pick-ic">📷</span><span>写真を撮る / 選ぶ</span>
           </label>
           <div class="img-preview" hidden><img alt="プレビュー"><button type="button" class="img-redo ghost">選び直す</button></div>
+          <div class="img-warn" hidden></div>
           <div class="img-actions" hidden><button type="button" class="img-go">この写真で占う</button></div>
           <div class="img-err" hidden></div>
         </div></div>`;
@@ -294,19 +328,28 @@
       const fileEl = wrap.querySelector('input[type=file]');
       const prev = wrap.querySelector('.img-preview'), prevImg = prev.querySelector('img');
       const actions = wrap.querySelector('.img-actions'), errEl = wrap.querySelector('.img-err');
+      const warnEl = wrap.querySelector('.img-warn');
       const pick = wrap.querySelector('.img-pick');
+      const guide = wrap.querySelector('.img-guide');
       let dataUrl = null;
       const showErr = (m) => { errEl.textContent = m; errEl.hidden = false; };
       fileEl.onchange = async () => {
-        errEl.hidden = true;
+        errEl.hidden = true; warnEl.hidden = true;
         const file = fileEl.files && fileEl.files[0]; if (!file) return;
         if (!/^image\//.test(file.type)) { showErr('画像ファイルを選んでください。'); return; }
         try {
-          dataUrl = await downscaleImage(file, 1024, 0.85);
-          prevImg.src = dataUrl; prev.hidden = false; actions.hidden = false; pick.style.display = 'none'; scrollSoon();
+          const r = await downscaleImage(file, 1600, 0.9);
+          dataUrl = r.dataUrl;
+          prevImg.src = dataUrl; prev.hidden = false; actions.hidden = false; pick.style.display = 'none'; if (guide) guide.hidden = true;
+          // ブレ・ピンボケの疑いがあれば、撮り直しを“推奨”（ブロックはしない）
+          if (typeof r.sharpness === 'number' && r.sharpness < BLUR_THRESHOLD) {
+            warnEl.innerHTML = '⚠ ピントが甘い／ブレている可能性があります。手相の細い線が読み取りにくくなります。明るい場所でピントを合わせて撮り直すのがおすすめです（このまま進むこともできます）。';
+            warnEl.hidden = false;
+          }
+          scrollSoon();
         } catch { showErr('この画像を読み込めませんでした。別の写真でお試しください。'); }
       };
-      wrap.querySelector('.img-redo').onclick = () => { dataUrl = null; prev.hidden = true; actions.hidden = true; pick.style.display = ''; fileEl.value = ''; scrollSoon(); };
+      wrap.querySelector('.img-redo').onclick = () => { dataUrl = null; prev.hidden = true; actions.hidden = true; warnEl.hidden = true; pick.style.display = ''; if (guide) guide.hidden = false; fileEl.value = ''; scrollSoon(); };
       wrap.querySelector('.img-go').onclick = () => {
         if (!dataUrl) return;
         actions.hidden = true; pick.style.display = 'none';
