@@ -647,21 +647,28 @@
     offerRestart();
   }
 
-  // 手相スキャン演出：送られた手のひら写真の上をゴールドの光が走査する（読み取り中）
+  // 手のアウトライン（右手。左手はCSSで左右反転）
+  const HAND_OUTLINE = `<svg class="pscan-hand" viewBox="0 0 220 300" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <path d="M84 286 L80 203 Q78 187 63 192 Q48 197 48 209 Q48 220 62 217 Q77 214 82 199 L84 140
+      Q85 64 96 64 Q107 64 108 139 Q109 50 120 50 Q131 50 132 139 Q133 62 144 62 Q155 62 156 139
+      Q157 84 167 84 Q178 84 176 150 L172 286 Z"/>
+  </svg>`;
+
+  // 手相スキャン演出：左右の手のアウトラインを、ゴールドのレーザー2本（縦軸を上下＋横軸を左右）が走査
   function palmScanStage() {
-    const imgs = [state.answers.palmImage, state.answers.palmImage2].filter(Boolean);
-    if (!imgs.length) return null;
+    const n = [state.answers.palmImage, state.answers.palmImage2].filter(Boolean).length || 2;
     const wrap = document.createElement('div');
     wrap.className = 'msg bot stagemsg';
-    const cells = imgs.map((src, i) => {
-      const label = imgs.length > 1 ? (i === 0 ? '利き手' : '反対の手') : '手のひら';
-      const motes = reduceMotion ? '' : Array.from({ length: 10 }, () => {
-        const x = (Math.random() * 100).toFixed(1), y = (Math.random() * 100).toFixed(1), d = (Math.random() * 2.4).toFixed(2), s = (6 + Math.random() * 8).toFixed(0);
+    const cells = Array.from({ length: n }, (_, i) => {
+      const isLeft = n > 1 && i === 1;
+      const label = n > 1 ? (i === 0 ? '利き手' : '反対の手') : '手のひら';
+      const motes = reduceMotion ? '' : Array.from({ length: 8 }, () => {
+        const x = (Math.random() * 100).toFixed(1), y = (Math.random() * 100).toFixed(1), d = (Math.random() * 2.4).toFixed(2), s = (6 + Math.random() * 7).toFixed(0);
         return `<b style="left:${x}%;top:${y}%;--d:${d}s;font-size:${s}px">✦</b>`;
       }).join('');
-      return `<figure class="pscan-cell${reduceMotion ? ' still' : ''}">
-          <img src="${src}" alt="${label}">
-          <span class="pscan-line"></span><span class="pscan-grid"></span><span class="pscan-motes">${motes}</span>
+      return `<figure class="pscan-cell${isLeft ? ' left' : ''}${reduceMotion ? ' still' : ''}">
+          ${HAND_OUTLINE}
+          <span class="laser-h"></span><span class="laser-v"></span><span class="pscan-motes">${motes}</span>
           <figcaption>${label}</figcaption>
         </figure>`;
     }).join('');

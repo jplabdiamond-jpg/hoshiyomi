@@ -212,28 +212,31 @@ body{
 .pscan-row{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
 .pscan-cell{position:relative;width:172px;max-width:44vw;margin:0;border-radius:12px;overflow:hidden;
   border:1px solid rgba(201,168,106,.5);box-shadow:0 8px 24px rgba(0,0,0,.4),0 0 0 1px rgba(0,0,0,.3) inset;background:#0d1020}
-.pscan-cell img{display:block;width:100%;height:100%;object-fit:cover;aspect-ratio:3/4;filter:brightness(.82) contrast(1.05)}
+.pscan-cell{aspect-ratio:3/4;background:radial-gradient(120% 100% at 50% 42%,#141830,#0b0d18)}
+/* 手のアウトライン（右手／左手は左右反転） */
+.pscan-hand{display:block;width:100%;height:100%;padding:14px;box-sizing:border-box}
+.pscan-hand path{fill:rgba(227,200,141,.045);stroke:var(--gold);stroke-width:2.2;stroke-linejoin:round;
+  filter:drop-shadow(0 0 5px rgba(227,200,141,.45))}
+.pscan-cell.left .pscan-hand{transform:scaleX(-1)}
 .pscan-cell figcaption{position:absolute;left:0;right:0;bottom:0;text-align:center;font-size:11px;letter-spacing:.1em;
   color:var(--gold);padding:3px 0 4px;background:linear-gradient(0deg,rgba(13,16,32,.85),transparent)}
-/* 走査する光の帯 */
-.pscan-line{position:absolute;left:0;right:0;top:0;height:30%;pointer-events:none;mix-blend-mode:screen;
-  background:linear-gradient(180deg,transparent,rgba(255,244,214,.15) 40%,rgba(255,246,218,.85) 50%,rgba(255,244,214,.15) 60%,transparent);
-  box-shadow:0 0 22px 6px rgba(227,200,141,.55);animation:pscanmove 2.1s cubic-bezier(.5,0,.5,1) infinite}
-@keyframes pscanmove{0%{transform:translateY(-110%)}100%{transform:translateY(440%)}}
-/* 走査済みを示すゴールドのグリッドと微光 */
-.pscan-grid{position:absolute;inset:0;pointer-events:none;opacity:.22;mix-blend-mode:screen;
-  background-image:linear-gradient(rgba(227,200,141,.6) 1px,transparent 1px),linear-gradient(90deg,rgba(227,200,141,.6) 1px,transparent 1px);
-  background-size:22px 22px;animation:pscanglow 2.1s ease-in-out infinite}
-@keyframes pscanglow{0%,100%{opacity:.12}50%{opacity:.3}}
-.pscan-cell::after{content:"";position:absolute;inset:0;pointer-events:none;mix-blend-mode:screen;
-  background:radial-gradient(120% 60% at 50% 50%,rgba(227,200,141,.18),transparent 70%);animation:pscanglow 2.1s ease-in-out infinite}
+/* ゴールドのレーザー2本：縦軸を上下する水平線＋横軸を左右する垂直線 */
+.laser-h{position:absolute;left:0;right:0;height:2px;pointer-events:none;mix-blend-mode:screen;top:4%;
+  background:linear-gradient(90deg,transparent,rgba(255,246,218,.25) 8%,#ffeec0 50%,rgba(255,246,218,.25) 92%,transparent);
+  box-shadow:0 0 10px 2px rgba(227,200,141,.95),0 0 26px 6px rgba(227,200,141,.45);animation:laserY 1.9s cubic-bezier(.45,0,.55,1) infinite}
+@keyframes laserY{0%{top:3%}50%{top:95%}100%{top:3%}}
+.laser-v{position:absolute;top:0;bottom:0;width:2px;pointer-events:none;mix-blend-mode:screen;left:4%;
+  background:linear-gradient(180deg,transparent,rgba(255,246,218,.25) 8%,#ffeec0 50%,rgba(255,246,218,.25) 92%,transparent);
+  box-shadow:0 0 10px 2px rgba(227,200,141,.95),0 0 26px 6px rgba(227,200,141,.45);animation:laserX 2.5s cubic-bezier(.45,0,.55,1) infinite}
+@keyframes laserX{0%{left:3%}50%{left:95%}100%{left:3%}}
+@keyframes pscanglow{0%,100%{opacity:.5}50%{opacity:1}}
 .pscan-motes{position:absolute;inset:0;pointer-events:none;overflow:hidden}
 .pscan-motes b{position:absolute;color:var(--gold);opacity:0;text-shadow:0 0 8px rgba(227,200,141,.8);animation:pscanmote 2.4s ease-in-out var(--d,0s) infinite}
 @keyframes pscanmote{0%,100%{opacity:0;transform:translateY(6px) scale(.7)}50%{opacity:.9;transform:translateY(-4px) scale(1)}}
 .pscan-cap{text-align:center;margin-top:12px;font-family:var(--serif,"Hiragino Mincho ProN",serif);font-size:14px;
   letter-spacing:.14em;color:var(--gold);text-shadow:0 0 12px rgba(227,200,141,.5);animation:pscanglow 2.1s ease-in-out infinite}
-.pscan-cell.still .pscan-line,.pscan-cell.still .pscan-grid,.pscan-cell.still::after{animation:none}
-@media (prefers-reduced-motion:reduce){.pscan-line,.pscan-grid,.pscan-cell::after,.pscan-motes b,.pscan-cap{animation:none}.pscan-line{display:none}}
+.pscan-cell.still .laser-h,.pscan-cell.still .laser-v{animation:none}
+@media (prefers-reduced-motion:reduce){.laser-h,.laser-v,.pscan-motes b,.pscan-cap{animation:none}.laser-h,.laser-v{opacity:.6}}
 .up-thumb{display:block;max-width:180px;max-height:180px;border-radius:6px;object-fit:cover}
 /* 情報ポップアップ */
 .sv-modal-ov{position:fixed;inset:0;z-index:999;display:flex;align-items:center;justify-content:center;
