@@ -647,20 +647,23 @@
     offerRestart();
   }
 
-  // 手相スキャン演出：両手のゴールド画像を、細く明るいレーザー2本（縦軸を上下＋横軸を左右）が走査
+  // 手相スキャン演出：右手・左手を別々に、細く明るいレーザー2本（縦軸を上下＋横軸を左右）が独立して走査
   function palmScanStage() {
     const wrap = document.createElement('div');
     wrap.className = 'msg bot stagemsg';
-    const motes = reduceMotion ? '' : Array.from({ length: 10 }, () => {
-      const x = (Math.random() * 100).toFixed(1), y = (Math.random() * 100).toFixed(1), d = (Math.random() * 2.4).toFixed(2), s = (6 + Math.random() * 7).toFixed(0);
-      return `<b style="left:${x}%;top:${y}%;--d:${d}s;font-size:${s}px">✦</b>`;
-    }).join('');
+    const cell = (src, cls) => {
+      const motes = reduceMotion ? '' : Array.from({ length: 6 }, () => {
+        const x = (Math.random() * 100).toFixed(1), y = (Math.random() * 100).toFixed(1), d = (Math.random() * 2.4).toFixed(2), s = (6 + Math.random() * 6).toFixed(0);
+        return `<b style="left:${x}%;top:${y}%;--d:${d}s;font-size:${s}px">✦</b>`;
+      }).join('');
+      return `<figure class="pscan-cell ${cls}${reduceMotion ? ' still' : ''}">
+          <img class="pscan-hands" src="/${src}" alt="手のひら" draggable="false">
+          <span class="laser-h"></span><span class="laser-v"></span><span class="pscan-motes">${motes}</span>
+        </figure>`;
+    };
     wrap.innerHTML = `<div class="bubble" style="width:100%;padding:0;background:transparent;border:none;box-shadow:none">
         <div class="pscan"><div class="pscan-row">
-          <figure class="pscan-cell${reduceMotion ? ' still' : ''}">
-            <img class="pscan-hands" src="/palm-hands.webp" alt="手のひら" draggable="false">
-            <span class="laser-h"></span><span class="laser-v"></span><span class="pscan-motes">${motes}</span>
-          </figure>
+          ${cell('palm-hand-a.webp', 'a')}${cell('palm-hand-b.webp', 'b')}
         </div>
         <div class="pscan-cap">手のひらを読み取っています…</div></div></div>`;
     chat.appendChild(wrap); scroll();
