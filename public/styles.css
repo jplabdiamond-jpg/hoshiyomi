@@ -209,26 +209,24 @@ body{
 .img-warn{color:#8a5a00;background:rgba(240,180,40,.12);border:1px solid rgba(200,150,30,.4);border-radius:8px;padding:8px 11px;font-size:12.5px;line-height:1.55}
 /* 手相スキャン演出（読み取り中） */
 .pscan{--gold:#e3c88d;padding:6px 0}
-.pscan-row{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
-.pscan-cell{position:relative;width:172px;max-width:44vw;margin:0;border-radius:12px;overflow:hidden;
-  border:1px solid rgba(201,168,106,.5);box-shadow:0 8px 24px rgba(0,0,0,.4),0 0 0 1px rgba(0,0,0,.3) inset;background:#0d1020}
-.pscan-cell{aspect-ratio:3/4;background:radial-gradient(120% 100% at 50% 42%,#141830,#0b0d18)}
-/* 手のアウトライン（右手／左手は左右反転） */
-.pscan-hand{display:block;width:100%;height:100%;padding:14px;box-sizing:border-box}
-.pscan-hand path{fill:rgba(227,200,141,.045);stroke:var(--gold);stroke-width:2.2;stroke-linejoin:round;
-  filter:drop-shadow(0 0 5px rgba(227,200,141,.45))}
-.pscan-cell.left .pscan-hand{transform:scaleX(-1)}
-.pscan-cell figcaption{position:absolute;left:0;right:0;bottom:0;text-align:center;font-size:11px;letter-spacing:.1em;
-  color:var(--gold);padding:3px 0 4px;background:linear-gradient(0deg,rgba(13,16,32,.85),transparent)}
-/* ゴールドのレーザー2本：縦軸を上下する水平線＋横軸を左右する垂直線 */
-.laser-h{position:absolute;left:0;right:0;height:2px;pointer-events:none;mix-blend-mode:screen;top:4%;
-  background:linear-gradient(90deg,transparent,rgba(255,246,218,.25) 8%,#ffeec0 50%,rgba(255,246,218,.25) 92%,transparent);
-  box-shadow:0 0 10px 2px rgba(227,200,141,.95),0 0 26px 6px rgba(227,200,141,.45);animation:laserY 1.9s cubic-bezier(.45,0,.55,1) infinite}
-@keyframes laserY{0%{top:3%}50%{top:95%}100%{top:3%}}
-.laser-v{position:absolute;top:0;bottom:0;width:2px;pointer-events:none;mix-blend-mode:screen;left:4%;
-  background:linear-gradient(180deg,transparent,rgba(255,246,218,.25) 8%,#ffeec0 50%,rgba(255,246,218,.25) 92%,transparent);
-  box-shadow:0 0 10px 2px rgba(227,200,141,.95),0 0 26px 6px rgba(227,200,141,.45);animation:laserX 2.5s cubic-bezier(.45,0,.55,1) infinite}
-@keyframes laserX{0%{left:3%}50%{left:95%}100%{left:3%}}
+.pscan-row{display:flex;justify-content:center}
+.pscan-cell{position:relative;width:100%;max-width:440px;margin:0;border-radius:12px;overflow:hidden;
+  border:1px solid rgba(201,168,106,.35);box-shadow:0 8px 24px rgba(0,0,0,.4),0 0 0 1px rgba(0,0,0,.3) inset;
+  background:radial-gradient(120% 100% at 50% 45%,#141830,#0b0d18)}
+/* 添付のゴールドの手の画像（両手・透過PNG） */
+.pscan-hands{display:block;width:100%;height:auto;padding:12px 10px;box-sizing:border-box;
+  filter:drop-shadow(0 0 5px rgba(227,200,141,.4))}
+/* ゴールドのレーザー2本：細く明るい線が、縦軸を上下＋横軸を左右に走査 */
+.laser-h{position:absolute;left:0;right:0;height:1px;pointer-events:none;mix-blend-mode:screen;top:4%;
+  background:linear-gradient(90deg,transparent,rgba(255,250,235,.4) 6%,#fff7e4 50%,rgba(255,250,235,.4) 94%,transparent);
+  box-shadow:0 0 6px 1px #ffeec0,0 0 16px 3px rgba(255,236,192,.85),0 0 30px 8px rgba(227,200,141,.5);
+  animation:laserY 2s cubic-bezier(.45,0,.55,1) infinite}
+@keyframes laserY{0%{top:3%}50%{top:96%}100%{top:3%}}
+.laser-v{position:absolute;top:0;bottom:0;width:1px;pointer-events:none;mix-blend-mode:screen;left:4%;
+  background:linear-gradient(180deg,transparent,rgba(255,250,235,.4) 6%,#fff7e4 50%,rgba(255,250,235,.4) 94%,transparent);
+  box-shadow:0 0 6px 1px #ffeec0,0 0 16px 3px rgba(255,236,192,.85),0 0 30px 8px rgba(227,200,141,.5);
+  animation:laserX 2.6s cubic-bezier(.45,0,.55,1) infinite}
+@keyframes laserX{0%{left:3%}50%{left:96%}100%{left:3%}}
 @keyframes pscanglow{0%,100%{opacity:.5}50%{opacity:1}}
 .pscan-motes{position:absolute;inset:0;pointer-events:none;overflow:hidden}
 .pscan-motes b{position:absolute;color:var(--gold);opacity:0;text-shadow:0 0 8px rgba(227,200,141,.8);animation:pscanmote 2.4s ease-in-out var(--d,0s) infinite}
