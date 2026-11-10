@@ -466,19 +466,27 @@
     if (state.div && state.div.key === 'tarot') return runTarotReading();
     state.stage = 'reading';
     input.disabled = true; input.placeholder = '鑑定中…'; clearQuick(); showInput(false);
-    const t = typing();
-    await botSay('', 0).then((m) => m.remove()).catch(() => {});
+    // 西洋占星術は星座ホイール動画をフェードインで差し込み、結果直前にフェードアウト
+    const isAstro = state.div && state.div.key === 'astrology';
+    const stage = isAstro ? astroVideoStage() : null;
+    const t = stage ? null : typing();
+    const started = Date.now();
     try {
       const r = await fetch('/api/reading', {
         method: 'POST', headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ divination: state.div.key, answers: state.answers, anonId }),
       });
       const data = await r.json();
-      t.remove();
+      if (stage) {
+        const MIN = reduceMotion ? 0 : 4200; const el = Date.now() - started;
+        if (el < MIN) await wait(MIN - el);
+        await fadeRemove(stage);
+      } else { t.remove(); }
       if (!r.ok || data.error) { await botSay(`うまく鑑定できませんでした。${esc(data.error || '')}<br>もう一度お試しください。`); offerRestart(); return; }
       renderResult(data);
     } catch (e) {
-      t.remove(); await botSay('通信に失敗しました。少し時間をおいて再度お試しください。');
+      if (stage) stage.remove(); if (t) t.remove();
+      await botSay('通信に失敗しました。少し時間をおいて再度お試しください。');
     }
     offerRestart();
   }
@@ -647,10 +655,10 @@
     offerRestart();
   }
 
-  // 手相スキャン演出：手のひらが光でスキャンされる動画をループ再生
+  // 手相スキャン演出：手のひらが光でスキャンされる動画をフェードインでループ再生
   function palmScanStage() {
     const wrap = document.createElement('div');
-    wrap.className = 'msg bot stagemsg';
+    wrap.className = 'msg bot stagemsg fade-stage';
     wrap.innerHTML = `<div class="bubble" style="width:100%;padding:0;background:transparent;border:none;box-shadow:none">
         <div class="pscan">
           <video class="pscan-vid" src="/palm-scan.mp4" autoplay muted loop playsinline preload="auto" aria-label="手のひらを読み取っています"></video>
@@ -659,7 +667,32 @@
     chat.appendChild(wrap); scroll();
     const v = wrap.querySelector('video');
     if (v) { v.muted = true; const p = v.play(); if (p && p.catch) p.catch(() => {}); }
+    requestAnimationFrame(() => requestAnimationFrame(() => wrap.classList.add('in')));
     return wrap;
+  }
+
+  // 西洋占星術：鑑定待ちに星座ホイール動画をフェードインで差し込む
+  function astroVideoStage() {
+    const wrap = document.createElement('div');
+    wrap.className = 'msg bot stagemsg astro-stage';
+    wrap.innerHTML = `<div class="bubble" style="width:100%;padding:0;background:transparent;border:none;box-shadow:none">
+        <div class="astro-wrap">
+          <video class="astro-vid" src="/astro-scan.mp4" autoplay muted loop playsinline preload="auto" aria-label="星の配置を読み解いています"></video>
+          <div class="pscan-cap">星の配置を読み解いています…</div>
+        </div></div>`;
+    chat.appendChild(wrap); scroll();
+    const v = wrap.querySelector('video');
+    if (v) { v.muted = true; const p = v.play(); if (p && p.catch) p.catch(() => {}); }
+    requestAnimationFrame(() => requestAnimationFrame(() => wrap.classList.add('in')));
+    return wrap;
+  }
+  // フェードアウトしてから要素を除去
+  function fadeRemove(el) {
+    return new Promise((res) => {
+      if (!el) return res();
+      el.classList.remove('in'); el.classList.add('out');
+      setTimeout(() => { el.remove(); res(); }, reduceMotion ? 0 : 650);
+    });
   }
 
   async function goCheckout() {
@@ -671,13 +704,15 @@
     await botSay(`${esc(state.div.ja)}は <b>¥${price.toLocaleString()}</b> の有料鑑定です。<br>${prep}`, 500);
     const scan = usesPalm ? palmScanStage() : null;
     const t = scan ? null : typing();
+    const started = Date.now();
     try {
       const r = await fetch('/api/checkout', {
         method: 'POST', headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ divination: state.div.key, answers: state.answers, anonId }),
       });
       const data = await r.json();
-      if (t) t.remove(); if (scan) scan.remove();
+      if (t) t.remove();
+      if (scan) { const MIN = reduceMotion ? 0 : 1400; const el = Date.now() - started; if (el < MIN) await wait(MIN - el); await fadeRemove(scan); }
       if (r.status === 422 && data.error === 'palm_retake') {
         await botSay(esc(data.message || '手のひらの写真をうまく読み取れませんでした。明るい場所で撮り直してください。')); offerRestart(); return;
       }
@@ -687,7 +722,7 @@
       sessionStorage.setItem('sv_pending', '1');
       location.href = data.url; // Stripe Checkout へ
     } catch {
-      if (t) t.remove(); if (scan) scan.remove();
+      if (t) t.remove(); if (scan) await fadeRemove(scan);
       await botSay('決済サーバーに接続できませんでした。少し時間をおいて再度お試しください。'); offerRestart();
     }
   }

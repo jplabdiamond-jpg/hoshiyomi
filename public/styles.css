@@ -210,8 +210,23 @@ body{
 /* 手相スキャン演出（読み取り中） */
 .pscan{--gold:#e3c88d;padding:6px 0}
 /* 手のひらスキャン動画をループ再生 */
-.pscan-vid{display:block;width:100%;max-width:300px;margin:0 auto;border-radius:14px;
+.pscan-vid{display:block;width:100%;max-width:340px;margin:0 auto;border-radius:14px;
   box-shadow:0 10px 30px rgba(0,0,0,.45),0 0 0 1px rgba(201,168,106,.25)}
+/* モバイルでは画面幅いっぱい（全画面サイズ）で表示。手は元々ほぼ全幅に写っているためトリミングはしない */
+@media (max-width:600px){
+  .stagemsg .pscan{width:100vw;margin-left:calc(50% - 50vw);margin-right:calc(50% - 50vw)}
+  .pscan-vid{max-width:none;width:100%;border-radius:0;box-shadow:none}
+}
+/* 動画演出のフェードイン／アウト（手相・占星術共通） */
+.fade-stage{opacity:0;transition:opacity .6s ease}
+.fade-stage.in{opacity:1}
+.fade-stage.out{opacity:0}
+.astro-stage{opacity:0;transition:opacity .6s ease}
+.astro-stage.in{opacity:1}
+.astro-stage.out{opacity:0}
+.astro-vid{display:block;width:100%;max-width:440px;margin:0 auto;border-radius:14px;
+  box-shadow:0 10px 30px rgba(0,0,0,.45),0 0 0 1px rgba(201,168,106,.25)}
+@media (prefers-reduced-motion:reduce){.astro-stage{transition:none}}
 @keyframes pscanglow{0%,100%{opacity:.5}50%{opacity:1}}
 .pscan-cap{text-align:center;margin-top:12px;font-family:var(--serif,"Hiragino Mincho ProN",serif);font-size:14px;
   letter-spacing:.14em;color:var(--gold);text-shadow:0 0 12px rgba(227,200,141,.5);animation:pscanglow 2.1s ease-in-out infinite}
