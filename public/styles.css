@@ -209,32 +209,13 @@ body{
 .img-warn{color:#8a5a00;background:rgba(240,180,40,.12);border:1px solid rgba(200,150,30,.4);border-radius:8px;padding:8px 11px;font-size:12.5px;line-height:1.55}
 /* 手相スキャン演出（読み取り中） */
 .pscan{--gold:#e3c88d;padding:6px 0}
-/* 右手・左手を2枚並べ、それぞれ独立してスキャン。黒い枠・余白なしで背景に直接乗る */
-.pscan-row{display:flex;justify-content:center;gap:12px;align-items:flex-start}
-.pscan-cell{position:relative;width:100%;max-width:200px;margin:0;background:transparent;border:0;overflow:visible}
-.pscan-hands{display:block;width:100%;height:auto;filter:drop-shadow(0 0 4px rgba(227,200,141,.4))}
-/* ゴールドのレーザー2本：ごく細く明るい線が、ゆっくり縦軸を上下＋横軸を左右に走査 */
-.laser-h{position:absolute;left:0;right:0;height:1px;pointer-events:none;mix-blend-mode:screen;top:4%;
-  background:linear-gradient(90deg,transparent,rgba(255,250,235,.35) 10%,#fff7e4 50%,rgba(255,250,235,.35) 90%,transparent);
-  box-shadow:0 0 3px .5px #ffeec0,0 0 9px 1px rgba(255,236,192,.8),0 0 18px 3px rgba(227,200,141,.4);
-  animation:laserY 4.8s cubic-bezier(.4,0,.6,1) infinite}
-@keyframes laserY{0%{top:2%}50%{top:97%}100%{top:2%}}
-.laser-v{position:absolute;top:0;bottom:0;width:1px;pointer-events:none;mix-blend-mode:screen;left:4%;
-  background:linear-gradient(180deg,transparent,rgba(255,250,235,.35) 10%,#fff7e4 50%,rgba(255,250,235,.35) 90%,transparent);
-  box-shadow:0 0 3px .5px #ffeec0,0 0 9px 1px rgba(255,236,192,.8),0 0 18px 3px rgba(227,200,141,.4);
-  animation:laserX 6s cubic-bezier(.4,0,.6,1) infinite}
-@keyframes laserX{0%{left:2%}50%{left:97%}100%{left:2%}}
-/* 2枚目の手は位相をずらして独立スキャンに見せる */
-.pscan-cell.b .laser-h{animation-duration:5.4s;animation-delay:-1.6s}
-.pscan-cell.b .laser-v{animation-duration:6.8s;animation-delay:-2.4s}
+/* 手のひらスキャン動画をループ再生 */
+.pscan-vid{display:block;width:100%;max-width:300px;margin:0 auto;border-radius:14px;
+  box-shadow:0 10px 30px rgba(0,0,0,.45),0 0 0 1px rgba(201,168,106,.25)}
 @keyframes pscanglow{0%,100%{opacity:.5}50%{opacity:1}}
-.pscan-motes{position:absolute;inset:0;pointer-events:none;overflow:hidden}
-.pscan-motes b{position:absolute;color:var(--gold);opacity:0;text-shadow:0 0 8px rgba(227,200,141,.8);animation:pscanmote 2.4s ease-in-out var(--d,0s) infinite}
-@keyframes pscanmote{0%,100%{opacity:0;transform:translateY(6px) scale(.7)}50%{opacity:.9;transform:translateY(-4px) scale(1)}}
 .pscan-cap{text-align:center;margin-top:12px;font-family:var(--serif,"Hiragino Mincho ProN",serif);font-size:14px;
   letter-spacing:.14em;color:var(--gold);text-shadow:0 0 12px rgba(227,200,141,.5);animation:pscanglow 2.1s ease-in-out infinite}
-.pscan-cell.still .laser-h,.pscan-cell.still .laser-v{animation:none}
-@media (prefers-reduced-motion:reduce){.laser-h,.laser-v,.pscan-motes b,.pscan-cap{animation:none}.laser-h,.laser-v{opacity:.6}}
+@media (prefers-reduced-motion:reduce){.pscan-cap{animation:none}}
 .up-thumb{display:block;max-width:180px;max-height:180px;border-radius:6px;object-fit:cover}
 /* 情報ポップアップ */
 .sv-modal-ov{position:fixed;inset:0;z-index:999;display:flex;align-items:center;justify-content:center;

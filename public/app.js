@@ -647,26 +647,18 @@
     offerRestart();
   }
 
-  // 手相スキャン演出：右手・左手を別々に、細く明るいレーザー2本（縦軸を上下＋横軸を左右）が独立して走査
+  // 手相スキャン演出：手のひらが光でスキャンされる動画をループ再生
   function palmScanStage() {
     const wrap = document.createElement('div');
     wrap.className = 'msg bot stagemsg';
-    const cell = (src, cls) => {
-      const motes = reduceMotion ? '' : Array.from({ length: 6 }, () => {
-        const x = (Math.random() * 100).toFixed(1), y = (Math.random() * 100).toFixed(1), d = (Math.random() * 2.4).toFixed(2), s = (6 + Math.random() * 6).toFixed(0);
-        return `<b style="left:${x}%;top:${y}%;--d:${d}s;font-size:${s}px">✦</b>`;
-      }).join('');
-      return `<figure class="pscan-cell ${cls}${reduceMotion ? ' still' : ''}">
-          <img class="pscan-hands" src="/${src}" alt="手のひら" draggable="false">
-          <span class="laser-h"></span><span class="laser-v"></span><span class="pscan-motes">${motes}</span>
-        </figure>`;
-    };
     wrap.innerHTML = `<div class="bubble" style="width:100%;padding:0;background:transparent;border:none;box-shadow:none">
-        <div class="pscan"><div class="pscan-row">
-          ${cell('palm-hand-a.webp', 'a')}${cell('palm-hand-b.webp', 'b')}
-        </div>
-        <div class="pscan-cap">手のひらを読み取っています…</div></div></div>`;
+        <div class="pscan">
+          <video class="pscan-vid" src="/palm-scan.mp4" autoplay muted loop playsinline preload="auto" aria-label="手のひらを読み取っています"></video>
+          <div class="pscan-cap">手のひらを読み取っています…</div>
+        </div></div>`;
     chat.appendChild(wrap); scroll();
+    const v = wrap.querySelector('video');
+    if (v) { v.muted = true; const p = v.play(); if (p && p.catch) p.catch(() => {}); }
     return wrap;
   }
 
