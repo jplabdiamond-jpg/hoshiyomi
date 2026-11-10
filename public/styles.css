@@ -226,6 +226,11 @@ body{
 .astro-stage.out{opacity:0}
 .astro-vid{display:block;width:100%;max-width:440px;margin:0 auto;border-radius:14px;
   box-shadow:0 10px 30px rgba(0,0,0,.45),0 0 0 1px rgba(201,168,106,.25)}
+/* モバイルでは中央の動画を画面幅いっぱいに（両サイドの黒い余白を削除） */
+@media (max-width:600px){
+  .fade-stage .astro-wrap{width:100vw;margin-left:calc(50% - 50vw);margin-right:calc(50% - 50vw)}
+  .astro-vid{max-width:none;width:100%;border-radius:0;box-shadow:none}
+}
 @media (prefers-reduced-motion:reduce){.astro-stage{transition:none}}
 @keyframes pscanglow{0%,100%{opacity:.5}50%{opacity:1}}
 .pscan-cap{text-align:center;margin-top:12px;font-family:var(--serif,"Hiragino Mincho ProN",serif);font-size:14px;
