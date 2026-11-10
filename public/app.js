@@ -466,9 +466,9 @@
     if (state.div && state.div.key === 'tarot') return runTarotReading();
     state.stage = 'reading';
     input.disabled = true; input.placeholder = '鑑定中…'; clearQuick(); showInput(false);
-    // 西洋占星術は星座ホイール動画をフェードインで差し込み、結果直前にフェードアウト
-    const isAstro = state.div && state.div.key === 'astrology';
-    const stage = isAstro ? astroVideoStage() : null;
+    // 動画演出のある占術（占星術・四柱推命）は動画をフェードインで差し込み、結果直前にフェードアウト
+    const vid = state.div && READING_VIDEOS[state.div.key];
+    const stage = vid ? videoStage(vid.src, vid.cap) : null;
     const t = stage ? null : typing();
     const started = Date.now();
     try {
@@ -671,14 +671,18 @@
     return wrap;
   }
 
-  // 西洋占星術：鑑定待ちに星座ホイール動画をフェードインで差し込む
-  function astroVideoStage() {
+  // 鑑定待ちに動画をフェードインで差し込む（占星術・四柱推命など）
+  const READING_VIDEOS = {
+    astrology: { src: '/astro-scan.mp4', cap: '星の配置を読み解いています…' },
+    fourpillars: { src: '/bazi-scan.mp4', cap: '四柱を読み解いています…' },
+  };
+  function videoStage(src, cap) {
     const wrap = document.createElement('div');
-    wrap.className = 'msg bot stagemsg astro-stage';
+    wrap.className = 'msg bot stagemsg fade-stage';
     wrap.innerHTML = `<div class="bubble" style="width:100%;padding:0;background:transparent;border:none;box-shadow:none">
         <div class="astro-wrap">
-          <video class="astro-vid" src="/astro-scan.mp4" autoplay muted loop playsinline preload="auto" aria-label="星の配置を読み解いています"></video>
-          <div class="pscan-cap">星の配置を読み解いています…</div>
+          <video class="astro-vid" src="${src}" autoplay muted loop playsinline preload="auto" aria-label="${cap}"></video>
+          <div class="pscan-cap">${cap}</div>
         </div></div>`;
     chat.appendChild(wrap); scroll();
     const v = wrap.querySelector('video');
