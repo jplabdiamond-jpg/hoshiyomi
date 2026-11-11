@@ -13,6 +13,10 @@ export async function onRequestGet(context) {
   const url = new URL(request.url);
   const origin = url.origin;
   const token = url.searchParams.get('token');
+  // 遷移先（同一オリジンの安全なパスのみ）。既定は /
+  const nextRaw = url.searchParams.get('next') || '';
+  const next = /^\/[A-Za-z0-9/_-]*$/.test(nextRaw) ? nextRaw : '/';
+  const sep = next.includes('?') ? '&' : '?';
   if (!env.DB || !token) return redirect(`${origin}/?login_error=1`);
   try {
     await ensureSchema(env.DB);
@@ -20,7 +24,7 @@ export async function onRequestGet(context) {
     if (!email) return redirect(`${origin}/?login_error=2`); // 期限切れ/使用済み
     const user = await upsertUserByEmail(env.DB, email);
     const sess = await createSession(env.DB, user.id);
-    return redirect(`${origin}/?loggedin=1`, sessionCookie(sess));
+    return redirect(`${origin}${next}${sep}loggedin=1`, sessionCookie(sess));
   } catch {
     return redirect(`${origin}/?login_error=9`);
   }

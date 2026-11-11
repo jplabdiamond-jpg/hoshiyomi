@@ -10,6 +10,8 @@ export async function onRequestPost(context) {
   let b;
   try { b = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
   const email = (b?.email || '').trim().toLowerCase();
+  // ログイン後の遷移先（同一オリジンの安全なパスのみ許可）
+  const next = (typeof b?.next === 'string' && /^\/[A-Za-z0-9/_-]*$/.test(b.next)) ? b.next : '';
   try {
     await ensureSchema(env.DB);
     // 既存ユーザーにのみ発行（サブスク登録＝アカウント作成はStripe経由）。存在を漏らさないため常に同じ応答。
@@ -18,7 +20,7 @@ export async function onRequestPost(context) {
       const token = await createMagicToken(env.DB, email);
       if (token) {
         const origin = new URL(request.url).origin;
-        const link = `${origin}/api/auth/verify?token=${token}`;
+        const link = `${origin}/api/auth/verify?token=${token}` + (next ? `&next=${encodeURIComponent(next)}` : '');
         await sendMagicEmail(env, email, link);
       }
     }

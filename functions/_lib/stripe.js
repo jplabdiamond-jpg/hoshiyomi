@@ -3,6 +3,7 @@ const API = 'https://api.stripe.com/v1';
 
 export const PRICE_JPY = 2000; // 総合鑑定 1回の価格（円・ゼロ小数通貨なのでそのまま円）
 export const SUB_PRICE_JPY = 980; // 継続鑑定サブスク（円・月額）
+export const PRO_PRICE_JPY = 2000; // 占い師プラン（円・月額・全鑑定使い放題）
 
 function auth(key) {
   return { Authorization: `Bearer ${key}`, 'content-type': 'application/x-www-form-urlencoded' };

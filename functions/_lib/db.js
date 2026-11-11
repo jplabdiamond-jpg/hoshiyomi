@@ -90,6 +90,45 @@ export async function ensureSchema(DB) {
         hits INTEGER DEFAULT 0, misses INTEGER DEFAULT 0,
         PRIMARY KEY (user_id, pattern)
       )`),
+      // ── 占い師プラン（¥2,000/月・使い放題／B2B2C） ──
+      // pro_users に user_id があれば「占い師プラン」。active 判定は subscriptions と併用
+      DB.prepare(`CREATE TABLE IF NOT EXISTS pro_users (
+        user_id TEXT PRIMARY KEY,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      )`),
+      // 顧客カルテ：占い師が登録したクライアント。センシティブ項目は保存しない設計（氏名カナ・生年月日・鑑定の土台のみ）
+      DB.prepare(`CREATE TABLE IF NOT EXISTS clients (
+        id TEXT PRIMARY KEY,
+        pro_user_id TEXT,
+        name TEXT, kana TEXT,
+        birth_date TEXT, birth_time TEXT, birth_place TEXT,
+        gender TEXT, hand TEXT, sei TEXT, mei TEXT,
+        memo TEXT,                     -- 占い師専用メモ（お客様には出さない）
+        answers_json TEXT,             -- 再鑑定用に保存する入力（手相画像は含めない）
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      )`),
+      DB.prepare(`CREATE INDEX IF NOT EXISTS idx_clients_pro ON clients(pro_user_id)`),
+      // クライアント別の鑑定履歴（前回との推移・継続性のため）
+      DB.prepare(`CREATE TABLE IF NOT EXISTS client_readings (
+        id TEXT PRIMARY KEY,
+        client_id TEXT, pro_user_id TEXT,
+        divination TEXT, title TEXT,
+        summary TEXT, data_json TEXT, model TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      )`),
+      DB.prepare(`CREATE INDEX IF NOT EXISTS idx_creadings_client ON client_readings(client_id)`),
+      DB.prepare(`CREATE INDEX IF NOT EXISTS idx_creadings_pro ON client_readings(pro_user_id)`),
+      // ホワイトラベル設定（屋号・ロゴ・テーマ色・表示演出）
+      DB.prepare(`CREATE TABLE IF NOT EXISTS pro_settings (
+        pro_user_id TEXT PRIMARY KEY,
+        shop_name TEXT, operator_name TEXT, tagline TEXT,
+        logo_data TEXT,                -- ロゴ画像（data URL・小さめ）
+        theme_color TEXT,              -- アクセント色 #rrggbb
+        hide_branding INTEGER DEFAULT 0,
+        animate INTEGER DEFAULT 1,     -- 結果アニメーションの既定 ON/OFF
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      )`),
     ]);
     ensured = true;
   } catch {
