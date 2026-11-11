@@ -676,6 +676,7 @@
     astrology: { src: '/astro-scan.mp4', cap: '星の配置を読み解いています…' },
     fourpillars: { src: '/bazi-scan.mp4', cap: '四柱を読み解いています…' },
     seimei: { src: '/seimei-scan.mp4', cap: 'お名前の画数を読み解いています…' },
+    numerology: { src: '/numerology-scan.mp4', cap: '運命数を読み解いています…' },
   };
   function videoStage(src, cap) {
     const wrap = document.createElement('div');
