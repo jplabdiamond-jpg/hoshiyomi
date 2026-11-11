@@ -951,12 +951,12 @@
         </div></div>`;
     }
     chat.appendChild(wrap);
-    if (isTarot) {
-      // 結果はタイトル（上端）から見えるようにスクロール
-      requestAnimationFrame(() => setTimeout(() => wrap.scrollIntoView({ block: 'start', behavior: 'smooth' }), 60));
-    } else {
-      scroll();
-    }
+    // 結果は上端から見えるようにスクロール（タロットは古紙の上端、他は結果の先頭）。
+    // この後に呼ばれる offerRestart() の最下部スクロールに勝つよう、遅延させて最後に効かせる
+    const scrollTarget = () => (isTarot ? wrap.querySelector('.scroll-wrap') : null) || wrap;
+    const pinTop = () => { const el = scrollTarget(); if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); };
+    requestAnimationFrame(() => setTimeout(pinTop, 80));
+    setTimeout(pinTop, 540);
     const fb = wrap.querySelector('.fb');
     if (fb) wireFeedback(fb);
     // 画像の無い札はSVG絵柄にフォールバック
