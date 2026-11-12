@@ -101,7 +101,7 @@ body{
 
 /* 鑑定結果 */
 .result{border:1px solid rgba(201,168,106,.24);border-radius:4px;overflow:hidden;box-shadow:var(--shadow);
-  background:linear-gradient(180deg,rgba(22,25,40,.92),rgba(14,17,28,.92));backdrop-filter:blur(10px)}
+  background:linear-gradient(180deg,rgba(22,25,40,.92),rgba(14,17,28,.92));backdrop-filter:blur(10px);white-space:normal}
 .result .rhead{padding:13px 18px;background:linear-gradient(135deg,rgba(201,168,106,.14),rgba(16,19,31,.1));
   border-bottom:1px solid var(--line);font-family:var(--serif);font-weight:600;font-size:19px;letter-spacing:.06em;
   display:flex;align-items:center;gap:9px;color:var(--gold)}
@@ -209,14 +209,9 @@ body{
 .img-warn{color:#8a5a00;background:rgba(240,180,40,.12);border:1px solid rgba(200,150,30,.4);border-radius:8px;padding:8px 11px;font-size:12.5px;line-height:1.55}
 /* 手相スキャン演出（読み取り中） */
 .pscan{--gold:#e3c88d;padding:6px 0}
-/* 手のひらスキャン動画をループ再生 */
-.pscan-vid{display:block;width:100%;max-width:340px;margin:0 auto;border-radius:14px;
-  box-shadow:0 10px 30px rgba(0,0,0,.45),0 0 0 1px rgba(201,168,106,.25)}
-/* モバイルでは画面幅いっぱい（全画面サイズ）で表示。手は元々ほぼ全幅に写っているためトリミングはしない */
-@media (max-width:600px){
-  .stagemsg .pscan{width:100vw;margin-left:calc(50% - 50vw);margin-right:calc(50% - 50vw)}
-  .pscan-vid{max-width:none;width:100%;border-radius:0;box-shadow:none}
-}
+/* 結果待ち動画は常に画面横幅100%（全ビューポート幅）で表示 */
+.stagemsg .pscan,.fade-stage .astro-wrap{width:100vw;margin-left:calc(50% - 50vw);margin-right:calc(50% - 50vw)}
+.pscan-vid,.astro-vid{display:block;width:100%;max-width:none;margin:0;border-radius:0;box-shadow:none}
 /* 動画演出のフェードイン／アウト（手相・占星術共通） */
 .fade-stage{opacity:0;transition:opacity .6s ease}
 .fade-stage.in{opacity:1}
@@ -224,13 +219,6 @@ body{
 .astro-stage{opacity:0;transition:opacity .6s ease}
 .astro-stage.in{opacity:1}
 .astro-stage.out{opacity:0}
-.astro-vid{display:block;width:100%;max-width:440px;margin:0 auto;border-radius:14px;
-  box-shadow:0 10px 30px rgba(0,0,0,.45),0 0 0 1px rgba(201,168,106,.25)}
-/* モバイルでは中央の動画を画面幅いっぱいに（両サイドの黒い余白を削除） */
-@media (max-width:600px){
-  .fade-stage .astro-wrap{width:100vw;margin-left:calc(50% - 50vw);margin-right:calc(50% - 50vw)}
-  .astro-vid{max-width:none;width:100%;border-radius:0;box-shadow:none}
-}
 @media (prefers-reduced-motion:reduce){.astro-stage{transition:none}}
 @keyframes pscanglow{0%,100%{opacity:.5}50%{opacity:1}}
 .pscan-cap{text-align:center;margin-top:12px;font-family:var(--serif,"Hiragino Mincho ProN",serif);font-size:14px;
