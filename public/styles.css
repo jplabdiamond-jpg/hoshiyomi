@@ -659,3 +659,16 @@ body.sv-intro-open{overflow:hidden}
   .cards.celtic .tcard{flex-basis:30%;min-width:98px}
   .cards.celtic .tcard-body .nm{font-size:14px}
 }
+
+/* ===== 総合鑑定ジャーニー（ステージ見出し・統合演出） ===== */
+.jstage{font-family:var(--serif);font-size:20px;font-weight:600;letter-spacing:.08em;color:var(--gold);
+  display:flex;align-items:center;gap:10px}
+.jstage::before,.jstage::after{content:"";flex:0 0 18px;height:1px;background:linear-gradient(90deg,transparent,var(--gold-deep))}
+.jstage::after{flex:1;background:linear-gradient(90deg,var(--gold-deep),transparent)}
+.jstage-sub{font-size:13px;color:var(--muted);margin-top:5px;letter-spacing:.02em}
+.synth-stage{display:flex;flex-direction:column;align-items:center;gap:14px;padding:22px 0 10px}
+.synth-circle{width:clamp(120px,30vw,180px);height:clamp(120px,30vw,180px);color:var(--gold);
+  filter:drop-shadow(0 0 18px rgba(227,200,141,.3));animation:synthspin 14s linear infinite}
+.synth-circle svg{width:100%;height:100%}
+@keyframes synthspin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.synth-circle{animation:none}}

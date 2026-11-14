@@ -264,7 +264,8 @@
     if (key === 'subscribe') return startSubscribe();
     const d = DIVS.find((x) => x.key === key); if (!d) return;
     state.subscribe = false;
-    state.div = d; state.fields = d.fields; state.idx = 0; state.answers = {}; state.stage = 'collecting';
+    const fields = (d.key === 'comprehensive_plus') ? buildComprehensiveJourney(d.fields) : d.fields;
+    state.div = d; state.fields = fields; state.idx = 0; state.answers = {}; state.stage = 'collecting';
     bubble('user', esc(d.ja));
     // 詳細プラン（有料）は入力の価値を先に伝える
     if (d.price) await showInfoPopup('項目を埋めるほど精度の高い鑑定が可能です。');
@@ -276,6 +277,16 @@
   async function askNext() {
     if (state.idx >= state.fields.length) return runReading();
     const f = state.fields[state.idx];
+    // ジャーニーのステージ見出し／演出マーカー（質問ではないので自動で進む）
+    if (f.type === 'stage' || f.type === 'anim' || f.type === 'tarot_anim' || f.type === 'synth') {
+      input.disabled = true; clearQuick(); showInput(false);
+      if (f.stage) await botSay(`<div class="jstage">${esc(f.stage)}</div>${f.intro ? `<div class="jstage-sub">${esc(f.intro)}</div>` : ''}`, 350);
+      else if (f.intro) await botSay(f.intro, 300);
+      if (f.type === 'anim') await shortScanAnim(f.src, f.cap);
+      else if (f.type === 'tarot_anim') await journeyTarotStage();
+      else if (f.type === 'synth') await synthAnim(f.cap);
+      state.idx++; return askNext();
+    }
     let msg = `<b>${esc(f.label)}</b>を教えてください。`;
     if (f.notice) msg += `<div class="field-notice"><span class="fn-ic">⚠</span><span>${esc(f.notice)}</span></div>`;
     if (f.help) msg += `<br><span style="color:var(--muted);font-size:13px">${esc(f.help)}</span>`;
@@ -879,7 +890,7 @@
         await botSay(`鑑定の実行でエラーが出ました。${esc(data.message || data.error || '')}<br>お手数ですがサポートへお知らせください。`);
         offerRestart(); return;
       }
-      if (data.data && data.data.tarot) await revealCelticLight(data.data.tarot.cards);
+      // タロットはジャーニー中に提示済みのため、ここでは再演出せず結果に10枚を表示する
       renderResult(data);
     } catch {
       t.remove(); await botSay('鑑定の取得に失敗しました。もう一度お試しください。');
@@ -945,6 +956,116 @@
     return `<h4>タロット（${esc(tz.spread || 'ケルト十字')}）</h4>
       <div style="font-size:11.5px;color:var(--muted);margin:-2px 0 8px">引いた10枚を、星・命式・統計の見立てと擦り合わせて下の鑑定にまとめています。</div>
       <div class="cards celtic">${cards}</div>`;
+  }
+
+  // ===== 総合鑑定ジャーニー（鑑定ごとに 質問→演出→次へ…最後に総合評価） =====
+  // 既存のフィールド定義を鑑定ごとのステージ順に並べ替え、間に“演出マーカー”を差し込む。
+  // 質問UIは既存の askNext をそのまま再利用。サブスク／占い師フローには影響しない。
+  function buildComprehensiveJourney(fields) {
+    const byKey = {}; fields.forEach((f) => { byKey[f.key] = f; });
+    const used = new Set();
+    const pick = (...ks) => ks.map((k) => { used.add(k); return byKey[k]; }).filter(Boolean);
+    const seq = [];
+    const stage = (n, intro) => seq.push({ type: 'stage', stage: n, intro });
+    const scan = (src, cap) => seq.push({ type: 'anim', src, cap });
+
+    stage('① 西洋占星術', 'まずは生まれたときの星の配置から読み解きます。');
+    seq.push(...pick('birthDate', 'birthTime', 'birthPlace'));
+    scan('/astro-scan.mp4', '星の配置を読み解いています…');
+
+    stage('② 四柱推命', '次に、生年月日時から運命の柱（命式）を立てます。');
+    seq.push(...pick('gender'));
+    scan('/bazi-scan.mp4', '四柱を立てています…');
+
+    stage('③ 数秘術', '生年月日から、あなたの運命数を導きます。');
+    scan('/numerology-scan.mp4', '運命数を数えています…');
+
+    stage('④ 姓名判断', 'お名前の画数から、授かった性質を読みます（任意）。');
+    seq.push(...pick('sei', 'mei'));
+    scan('/seimei-scan.mp4', 'お名前の画数を読み解いています…');
+
+    stage('⑤ タロット（ケルト十字）', 'あなたの“今”を、10枚のカードに映します。');
+    seq.push(...pick('theme'));
+    seq.push({ type: 'tarot_anim' });
+
+    stage('⑥ 手相', '最後に、両手から「生来のあなた」と「今のあなた」を読みます。');
+    seq.push(...pick('hand', 'palmImage', 'palmImage2'));
+    scan('/palm-scan.mp4', '手のひらを読み取っています…');
+
+    const rest = fields.filter((f) => !used.has(f.key));
+    if (rest.length) {
+      stage('⑦ 統計と未来予測', '生活や過去の転機を重ね、統計と未来の合致点を精密化します（任意）。');
+      seq.push(...rest);
+    }
+    seq.push({ type: 'synth', cap: 'すべての星と運命を重ね、総合鑑定を編んでいます…' });
+    return seq;
+  }
+
+  // 短いスキャン演出（フェードイン→短く→フェードアウト）
+  async function shortScanAnim(src, cap) {
+    const stage = videoStage(src, cap);
+    await wait(reduceMotion ? 150 : 1900);
+    await fadeRemove(stage);
+  }
+
+  // 静かな統合演出（魔法円＋キャプション、短め）
+  async function synthAnim(cap) {
+    const wrap = document.createElement('div');
+    wrap.className = 'msg bot stagemsg fade-stage';
+    wrap.innerHTML = `<div class="bubble" style="width:100%;padding:0;background:transparent;border:none;box-shadow:none">
+        <div class="synth-stage"><div class="synth-circle">${MAGIC_CIRCLE}</div><div class="pscan-cap">${esc(cap || '')}</div></div></div>`;
+    chat.appendChild(wrap); scroll();
+    requestAnimationFrame(() => requestAnimationFrame(() => wrap.classList.add('in')));
+    await wait(reduceMotion ? 150 : 2100);
+    await fadeRemove(wrap);
+  }
+
+  // ジャーニー中のタロット：シードで10枚を引いて短く見せ、シードを保存（最終結果と一致させる）
+  async function journeyTarotStage() {
+    const seed = Math.floor(Math.random() * 4294967296) >>> 0;
+    let cards = [];
+    try {
+      const r = await fetch('/api/tarot-draw', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ seed, question: state.answers.theme || '', spread: 'celtic' }),
+      });
+      const d = await r.json();
+      cards = (d && d.cards) || [];
+    } catch { cards = []; }
+    if (cards.length) {
+      state.answers.tarotSeed = seed; // 決済後の鑑定が同じ札を再現
+      await revealCelticShort(cards);
+    }
+  }
+
+  // タロット短演出：まとめてフェードイン→一斉めくり→短く保持→フェードアウト
+  async function revealCelticShort(cards) {
+    const wrap = document.createElement('div');
+    wrap.className = 'msg bot stagemsg fade-stage';
+    wrap.innerHTML = `<div class="bubble" style="width:100%;padding:0;background:transparent;border:none;box-shadow:none">
+        <div class="ctarot">
+          <div class="pscan-cap">カードがあなたの“今”を映します…</div>
+          <div class="ts-spread" data-count="${cards.length}">${cards.map((c) =>
+            `<div class="ts-slot">${flipCardHTML(c)}<div class="ps">${esc(c.position)}</div></div>`).join('')}</div>
+        </div></div>`;
+    chat.appendChild(wrap); scroll();
+    wrap.querySelectorAll('.tz-img').forEach((im) => im.addEventListener('error', () => {
+      const face = im.closest('.tz-front'); if (face) face.classList.remove('hasimg'); im.remove();
+    }));
+    const slots = [...wrap.querySelectorAll('.ts-slot')];
+    requestAnimationFrame(() => requestAnimationFrame(() => wrap.classList.add('in')));
+    if (reduceMotion) {
+      slots.forEach((s) => s.classList.add('deal', 'revealed'));
+      await wait(200);
+    } else {
+      await wait(220);
+      slots.forEach((s, i) => setTimeout(() => s.classList.add('deal'), i * 40));
+      await wait(220 + slots.length * 40 + 180);
+      slots.forEach((s) => s.classList.add('revealed'));
+      scroll();
+      await wait(1300);
+    }
+    await fadeRemove(wrap);
   }
 
   // 総合鑑定：決済後の“軽め”タロット演出（まとめてフェード→一斉にめくる。ガチャ無し）

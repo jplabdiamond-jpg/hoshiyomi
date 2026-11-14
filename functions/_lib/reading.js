@@ -181,8 +181,10 @@ export function computeDivination(key, answers, opts = {}) {
     if (answers.income) ctx.push(`年収: ${answers.income}`);
     if (answers.lifestyle) ctx.push(`生活・習慣: ${answers.lifestyle}`);
 
-    // タロット（ケルト十字・10枚）: 相談テーマを問いに引き、星・命式・統計と“擦り合わせる”象徴（今の状況・心模様）の層
-    const tarot = drawTarot('celtic', answers.theme || '');
+    // タロット（ケルト十字・10枚）: 相談テーマを問いに引き、星・命式・統計と“擦り合わせる”象徴（今の状況・心模様）の層。
+    // ジャーニー中に見せた札と一致させるため、answers.tarotSeed があれば同じ種から再現する
+    const tSeed = Number.isFinite(answers.tarotSeed) ? answers.tarotSeed : null;
+    const tarot = drawTarot('celtic', answers.theme || '', tSeed);
 
     const parts = [
       '《西洋占星術》\n' + summarizeChart(chart) + '\n' + summarizeTransits(transits),

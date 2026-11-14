@@ -107,10 +107,21 @@ function randomInt(max) {
   return Math.floor(Math.random() * max);
 }
 
-function shuffle(deck) {
+// 決定論的PRNG（seed指定時）。journeyで見せた札と、決済後の最終結果の札を一致させるために使う
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function shuffle(deck, rand) {
   const a = deck.slice();
+  const ri = rand ? (m) => Math.floor(rand() * m) : randomInt;
   for (let i = a.length - 1; i > 0; i--) {
-    const j = randomInt(i + 1);
+    const j = ri(i + 1);
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
@@ -121,11 +132,13 @@ function shuffle(deck) {
  * @param {string} spreadKey 'one' | 'three' | 'celtic'
  * @param {string} [question] 相談内容
  */
-export function drawTarot(spreadKey = 'one', question = '') {
+export function drawTarot(spreadKey = 'one', question = '', seed = null) {
   const spread = SPREADS[spreadKey] || SPREADS.one;
-  const deck = shuffle(buildDeck());
+  const rand = Number.isFinite(seed) ? mulberry32(seed >>> 0) : null;
+  const ri = rand ? (m) => Math.floor(rand() * m) : randomInt;
+  const deck = shuffle(buildDeck(), rand);
   const drawn = deck.slice(0, spread.count).map((card, i) => {
-    const reversed = randomInt(2) === 1;
+    const reversed = ri(2) === 1;
     const keywords =
       card.arcana === '大アルカナ'
         ? reversed
