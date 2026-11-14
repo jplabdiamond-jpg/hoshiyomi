@@ -879,6 +879,7 @@
         await botSay(`鑑定の実行でエラーが出ました。${esc(data.message || data.error || '')}<br>お手数ですがサポートへお知らせください。`);
         offerRestart(); return;
       }
+      if (data.data && data.data.tarot) await revealCelticLight(data.data.tarot.cards);
       renderResult(data);
     } catch {
       t.remove(); await botSay('鑑定の取得に失敗しました。もう一度お試しください。');
@@ -921,6 +922,60 @@
     const copyW = cards.length * reps * tileW;
     const dur = Math.max(20, Math.round(copyW / 42)); // 約42px/秒
     return `<div class="card-marquee"><div class="cm-track" style="animation-duration:${dur}s">${oneSet}${oneSet}</div></div>`;
+  }
+
+  // 総合鑑定の結果内に表示するタロット（ケルト十字10枚）
+  function celticCardsHTML(tz) {
+    if (!tz || !Array.isArray(tz.cards) || !tz.cards.length) return '';
+    const cards = tz.cards.map((c) => {
+      const id = cardImgId(c);
+      const rev = c.orientation === '逆位置';
+      const bg = id
+        ? `<div class="tcard-img${rev ? ' rev' : ''}" style="background-image:url('/cards/${id}.webp')"></div>`
+        : `<div class="tcard-art${rev ? ' rev' : ''}">${(window.SVTarotArt && SVTarotArt.cardArt) ? SVTarotArt.cardArt(c) : ''}</div>`;
+      return `<div class="tcard">
+        ${bg}<div class="tcard-ov"></div>
+        <div class="tcard-body">
+          <div class="pos">${esc(c.position)}</div>
+          <div class="nm">${esc(c.name)}</div>
+          <div class="or ${rev ? 'rev' : ''}">${esc(c.orientation)}</div>
+          <div class="kw">${esc(Array.isArray(c.keywords) ? c.keywords.join('・') : '')}</div>
+        </div></div>`;
+    }).join('');
+    return `<h4>タロット（${esc(tz.spread || 'ケルト十字')}）</h4>
+      <div style="font-size:11.5px;color:var(--muted);margin:-2px 0 8px">引いた10枚を、星・命式・統計の見立てと擦り合わせて下の鑑定にまとめています。</div>
+      <div class="cards celtic">${cards}</div>`;
+  }
+
+  // 総合鑑定：決済後の“軽め”タロット演出（まとめてフェード→一斉にめくる。ガチャ無し）
+  async function revealCelticLight(cards) {
+    if (!Array.isArray(cards) || !cards.length) return;
+    const wrap = document.createElement('div');
+    wrap.className = 'msg bot stagemsg fade-stage';
+    wrap.innerHTML = `<div class="bubble" style="width:100%;padding:0;background:transparent;border:none;box-shadow:none">
+        <div class="ctarot">
+          <div class="pscan-cap">タロットがあなたの“今”を映します…</div>
+          <div class="ts-spread" data-count="${cards.length}">${cards.map((c) =>
+            `<div class="ts-slot">${flipCardHTML(c)}<div class="ps">${esc(c.position)}</div></div>`).join('')}</div>
+        </div></div>`;
+    chat.appendChild(wrap); scroll();
+    wrap.querySelectorAll('.tz-img').forEach((im) => im.addEventListener('error', () => {
+      const face = im.closest('.tz-front'); if (face) face.classList.remove('hasimg'); im.remove();
+    }));
+    const slots = [...wrap.querySelectorAll('.ts-slot')];
+    requestAnimationFrame(() => requestAnimationFrame(() => wrap.classList.add('in')));
+    if (reduceMotion) {
+      slots.forEach((s) => s.classList.add('deal', 'revealed'));
+      await wait(200);
+    } else {
+      await wait(260);
+      slots.forEach((s, i) => setTimeout(() => s.classList.add('deal'), i * 55)); // 控えめにずらしつつ全体フェードイン
+      await wait(260 + slots.length * 55 + 260);
+      slots.forEach((s) => s.classList.add('revealed')); // まとめて一斉にめくる（ガチャ無し）
+      scroll();
+      await wait(1600);
+    }
+    await fadeRemove(wrap);
   }
 
   function renderResult(data) {
@@ -1137,8 +1192,9 @@
         dev = `<h4>分野別の偏差（平均0からのズレ ＝ 統計＋占い）</h4><div class="devtable">${rows}</div>`;
       }
       const tl = renderForesight(d.foresight);
+      const tz = celticCardsHTML(d.tarot);
       return `<div class="rbody" style="border-bottom:1px solid var(--line)">
-        <h4 style="margin-top:0">総合プロフィール</h4><div class="data-grid">${head.join('')}</div>${fs}${rk}${dev}${tl}</div>`;
+        <h4 style="margin-top:0">総合プロフィール</h4><div class="data-grid">${head.join('')}</div>${fs}${rk}${dev}${tl}${tz}</div>`;
     }
 
     if (data.divination === 'tarot') {
