@@ -1,16 +1,22 @@
 // 占い師プラン（¥2,000/月・使い放題）共通処理
-import { getAuth } from './account.js';
+import { getAuth, isActive } from './account.js';
 
-// 占い師プランかどうかを解決。pro_users に登録があり、かつサブスクが active
+// 占い師プランかどうかを解決。pro_users に登録があり、かつ占い師プランのサブスク（pro_subscriptions）が active。
+// ③継続鑑定（subscriptions 表）とは別テーブルを見るので、同一ユーザーが両方を持っても混ざらない。
 export async function getProAuth(DB, request) {
-  const base = await getAuth(DB, request); // { user, sub, active }
-  if (!base.user) return { ...base, isPro: false };
+  const base = await getAuth(DB, request); // ユーザー解決に使う（base.sub は③側なので使わない）
+  if (!base.user) return { user: null, sub: null, active: false, isPro: false, flagged: false };
   let flagged = false;
   try {
     const row = await DB.prepare('SELECT user_id FROM pro_users WHERE user_id = ?').bind(base.user.id).first();
     flagged = !!row;
   } catch { flagged = false; }
-  return { ...base, isPro: flagged && base.active, flagged };
+  let proSub = null;
+  try {
+    proSub = await DB.prepare('SELECT * FROM pro_subscriptions WHERE user_id = ?').bind(base.user.id).first();
+  } catch { proSub = null; }
+  const active = isActive(proSub);
+  return { user: base.user, sub: proSub, active, isPro: flagged && active, flagged };
 }
 
 export async function markPro(DB, userId) {

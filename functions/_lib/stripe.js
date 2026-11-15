@@ -55,6 +55,21 @@ export async function getSubscription(key, subId) {
   return data; // data.status, data.current_period_end, data.customer
 }
 
+// サブスクの「次回更新日(current_period_end, unix秒)」を取り出す。
+// Stripe の新しいAPIバージョンでは current_period_end がサブスク直下から
+// items.data[].current_period_end へ移動したため、両方をフォールバックで見る。
+export function subPeriodEnd(sub) {
+  if (!sub) return null;
+  if (typeof sub.current_period_end === 'number') return sub.current_period_end;
+  const items = sub.items && sub.items.data;
+  if (Array.isArray(items)) {
+    for (const it of items) {
+      if (it && typeof it.current_period_end === 'number') return it.current_period_end;
+    }
+  }
+  return null;
+}
+
 // Stripe顧客のカスタマーポータル（解約・支払い方法変更）URLを作る
 export async function createBillingPortal(key, { customerId, returnUrl }) {
   const body = new URLSearchParams();

@@ -1,7 +1,7 @@
 // GET /api/sub/activate?session_id=...&p=pendingId
 // 決済成立後に Stripe から戻る先。ユーザー作成→サブスク記録→セッション発行→Cookieでログイン状態にしてアプリへ。
 import { ensureSchema } from '../../_lib/db.js';
-import { getCheckoutSession, getSubscription } from '../../_lib/stripe.js';
+import { getCheckoutSession, getSubscription, subPeriodEnd } from '../../_lib/stripe.js';
 import { upsertUserByEmail, setSubscription, createSession, sessionCookie } from '../../_lib/account.js';
 
 function redirect(location, cookie) {
@@ -28,7 +28,7 @@ export async function onRequestGet(context) {
 
     // サブスクの状態を取得
     let status = 'active', periodEnd = null;
-    try { const sub = await getSubscription(env.STRIPE_SECRET_KEY, subId); status = sub.status; periodEnd = sub.current_period_end; } catch { /* 既定active */ }
+    try { const sub = await getSubscription(env.STRIPE_SECRET_KEY, subId); status = sub.status; periodEnd = subPeriodEnd(sub); } catch { /* 既定active */ }
 
     const user = await upsertUserByEmail(env.DB, email, custId);
     if (!user) return redirect(`${origin}/?sub_error=3`);
