@@ -68,6 +68,7 @@ export function isActive(sub) {
   return true;
 }
 
+// ③ 継続鑑定サブスク（subscriptions 表）。1ユーザー1行。
 export async function setSubscription(DB, userId, { subId, custId, status, periodEnd }) {
   await DB.prepare(
     `INSERT INTO subscriptions (user_id, stripe_subscription_id, stripe_customer_id, status, current_period_end, updated_at)
@@ -76,6 +77,36 @@ export async function setSubscription(DB, userId, { subId, custId, status, perio
        stripe_customer_id=excluded.stripe_customer_id, status=excluded.status,
        current_period_end=excluded.current_period_end, updated_at=CURRENT_TIMESTAMP`
   ).bind(userId, subId || null, custId || null, status || null, periodEnd || null).run();
+}
+
+// ④ 占い師プランのサブスク（pro_subscriptions 表）。③とは別テーブルにして、
+// 同一ユーザーが③継続鑑定と④占い師プランを同時に持っても衝突しないようにする。
+export async function setProSubscription(DB, userId, { subId, custId, status, periodEnd }) {
+  await DB.prepare(
+    `INSERT INTO pro_subscriptions (user_id, stripe_subscription_id, stripe_customer_id, status, current_period_end, updated_at)
+     VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+     ON CONFLICT(user_id) DO UPDATE SET stripe_subscription_id=excluded.stripe_subscription_id,
+       stripe_customer_id=excluded.stripe_customer_id, status=excluded.status,
+       current_period_end=excluded.current_period_end, updated_at=CURRENT_TIMESTAMP`
+  ).bind(userId, subId || null, custId || null, status || null, periodEnd || null).run();
+}
+
+// Webhook 用：stripe_subscription_id から、該当する行（③ subscriptions か ④ pro_subscriptions）の
+// status / current_period_end を更新する。見つかったテーブル名（'sub'|'pro'）を返す。無ければ null。
+export async function updateSubscriptionBySubId(DB, subId, { status, periodEnd }) {
+  if (!subId) return null;
+  for (const [table, kind] of [['subscriptions', 'sub'], ['pro_subscriptions', 'pro']]) {
+    try {
+      const row = await DB.prepare(`SELECT user_id FROM ${table} WHERE stripe_subscription_id = ?`).bind(subId).first();
+      if (row) {
+        await DB.prepare(
+          `UPDATE ${table} SET status = ?, current_period_end = COALESCE(?, current_period_end), updated_at = CURRENT_TIMESTAMP WHERE stripe_subscription_id = ?`
+        ).bind(status || null, (typeof periodEnd === 'number' ? periodEnd : null), subId).run();
+        return kind;
+      }
+    } catch { /* テーブル未作成などは無視して次へ */ }
+  }
+  return null;
 }
 
 // ── マジックリンク ──

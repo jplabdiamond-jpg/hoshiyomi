@@ -94,6 +94,16 @@ const STATEMENTS = [
     user_id TEXT PRIMARY KEY,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
   )`,
+  // 占い師プランのサブスク。③継続鑑定(subscriptions)とは別テーブルにして
+  // 同一ユーザーが③④を同時に持っても衝突しないようにする。
+  `CREATE TABLE IF NOT EXISTS pro_subscriptions (
+    user_id TEXT PRIMARY KEY,
+    stripe_subscription_id TEXT,
+    stripe_customer_id TEXT,
+    status TEXT,
+    current_period_end INTEGER,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+  )`,
   `CREATE TABLE IF NOT EXISTS clients (
     id TEXT PRIMARY KEY,
     pro_user_id TEXT,
